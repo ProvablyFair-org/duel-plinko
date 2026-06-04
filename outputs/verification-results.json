@@ -1,0 +1,1470 @@
+{
+  "runAt": "2026-06-10T12:29:15.364Z",
+  "dataset": {
+    "bets": 8100,
+    "seeds": 166,
+    "phaseA": 5400,
+    "phaseB": 2000,
+    "phaseC": 200,
+    "phaseD": 500
+  },
+  "artifactHashes": {
+    "dataset": {
+      "file": "data/plinko-master-8100bets.json",
+      "expected": "3cf9359d88220bc800bb32edfe04399f55b909302262928ee3a0582715635267",
+      "actual": "3cf9359d88220bc800bb32edfe04399f55b909302262928ee3a0582715635267",
+      "match": true
+    },
+    "config": {
+      "file": "plinkoConfig.json",
+      "expected": "78f0a39201a8c24fd1577143732e004f77e27d4d36efeedc6b3f7b93b2078fed",
+      "actual": "78f0a39201a8c24fd1577143732e004f77e27d4d36efeedc6b3f7b93b2078fed",
+      "match": true
+    }
+  },
+  "verdict": "PROVABLY FAIR — Full Pass",
+  "summary": {
+    "passed": 20,
+    "hardFails": 0,
+    "flags": 0
+  },
+  "steps": [
+    {
+      "step": 1,
+      "name": "Seed Hash Integrity",
+      "ecRefs": [
+        "EC-1"
+      ],
+      "severity": "PASS",
+      "pass": true,
+      "summary": "162 revealed seeds verified. 3 phase-boundary entries skipped (end-of-phase rotation reveals previous phase seed).",
+      "failures": [],
+      "details": {
+        "checked": 162,
+        "phaseBoundarySkips": 3
+      }
+    },
+    {
+      "step": 2,
+      "name": "Next-Seed Promotion (Commitment Linkage)",
+      "ecRefs": [
+        "EC-2"
+      ],
+      "severity": "PASS",
+      "pass": true,
+      "summary": "166/166 rotation transitions independently recomputed (previousNextHash === newActiveHash; cross-checked against seed-level nextServerSeedHash chain) — next-seed pre-commitment chain intact",
+      "failures": [],
+      "details": {
+        "checked": 166,
+        "recomputedMatches": 166
+      }
+    },
+    {
+      "step": 3,
+      "name": "Hash Consistency Within Epoch",
+      "ecRefs": [
+        "EC-26"
+      ],
+      "severity": "PASS",
+      "pass": true,
+      "summary": "All 162 epochs: server_seed_hashed identical across all bets in each epoch",
+      "failures": [],
+      "details": {
+        "epochs": 162
+      }
+    },
+    {
+      "step": 4,
+      "name": "Nonce Audit",
+      "ecRefs": [
+        "EC-2",
+        "EC-3",
+        "EC-4",
+        "EC-5"
+      ],
+      "severity": "PASS",
+      "pass": true,
+      "summary": "162 epochs: nonces sequential. 2 capture-retry epochs: 2 reconstructed from revealed seed (no captured server response available for comparison), 0 unverifiable.",
+      "failures": [],
+      "details": {
+        "epochsChecked": 162,
+        "captureArtifacts": 2,
+        "reconstructed": [
+          {
+            "epoch": "6a4a4aff75cfdf36",
+            "missedNonce": 20,
+            "rows": 16,
+            "computedSlot": 8
+          },
+          {
+            "epoch": "6f70b8229ebcd1c1",
+            "missedNonce": 32,
+            "rows": 16,
+            "computedSlot": 8
+          }
+        ]
+      }
+    },
+    {
+      "step": 5,
+      "name": "Slot Recomputation (RNG determinism)",
+      "ecRefs": [
+        "EC-6",
+        "EC-7"
+      ],
+      "severity": "PASS",
+      "pass": true,
+      "summary": "All 8100 bets with revealed seeds: HMAC-SHA256 recompute matches final_slot. Outcome reproduces exactly from (server seed, client seed, nonce) — no external entropy.",
+      "failures": [],
+      "details": {
+        "checked": 8100,
+        "skipped": 0
+      }
+    },
+    {
+      "step": 6,
+      "name": "Client Seed Influence",
+      "ecRefs": [
+        "EC-27"
+      ],
+      "severity": "PASS",
+      "pass": true,
+      "summary": "Wrong client seed changed 6819/8100 slots (84.2%) across 162 epochs",
+      "failures": [],
+      "details": {
+        "epochsTested": 162,
+        "totalChecked": 8100,
+        "totalChanged": 6819,
+        "pctChanged": "84.2%",
+        "epochResults": [
+          {
+            "hash": "9fae5bb7897874cb71d7...",
+            "changed": 42,
+            "total": 50
+          },
+          {
+            "hash": "16a56441801bae0db4c1...",
+            "changed": 40,
+            "total": 50
+          },
+          {
+            "hash": "b8a562c6074006d8f4e1...",
+            "changed": 42,
+            "total": 50
+          },
+          {
+            "hash": "c610fb1e7b162b68fb57...",
+            "changed": 41,
+            "total": 50
+          },
+          {
+            "hash": "d678b2a52eb55881435a...",
+            "changed": 42,
+            "total": 50
+          },
+          {
+            "hash": "c88889ae43c8166214e2...",
+            "changed": 39,
+            "total": 50
+          },
+          {
+            "hash": "b4cae0cd90f988ae9629...",
+            "changed": 42,
+            "total": 50
+          },
+          {
+            "hash": "73d7798f4423be01e246...",
+            "changed": 38,
+            "total": 50
+          },
+          {
+            "hash": "26bd28cb59a294dae557...",
+            "changed": 37,
+            "total": 50
+          },
+          {
+            "hash": "2ff1de4a028b70ad0feb...",
+            "changed": 41,
+            "total": 50
+          },
+          {
+            "hash": "ac53b27fe140bfba7484...",
+            "changed": 46,
+            "total": 50
+          },
+          {
+            "hash": "b5c8dc8273683f40f6a3...",
+            "changed": 43,
+            "total": 50
+          },
+          {
+            "hash": "cface66c8a82b4b6fe39...",
+            "changed": 44,
+            "total": 50
+          },
+          {
+            "hash": "05fa97a6ab9cd1a06675...",
+            "changed": 43,
+            "total": 50
+          },
+          {
+            "hash": "491faca4a863f3f83c5f...",
+            "changed": 40,
+            "total": 50
+          },
+          {
+            "hash": "b6950a2097b2d704aa2e...",
+            "changed": 42,
+            "total": 50
+          },
+          {
+            "hash": "abeed9e4d1fec3d2e7b6...",
+            "changed": 42,
+            "total": 50
+          },
+          {
+            "hash": "881091a18ef066358a19...",
+            "changed": 44,
+            "total": 50
+          },
+          {
+            "hash": "eb26fd9d0e96cf40efae...",
+            "changed": 41,
+            "total": 50
+          },
+          {
+            "hash": "528442a1ce7a055fb6d3...",
+            "changed": 41,
+            "total": 50
+          },
+          {
+            "hash": "367177f9a78c87b3ffe4...",
+            "changed": 37,
+            "total": 50
+          },
+          {
+            "hash": "1697b2b39e67a519d573...",
+            "changed": 47,
+            "total": 50
+          },
+          {
+            "hash": "9afd29b6c2b59ee12238...",
+            "changed": 44,
+            "total": 50
+          },
+          {
+            "hash": "70f62f5efed2e1b38349...",
+            "changed": 44,
+            "total": 50
+          },
+          {
+            "hash": "4f986293933e7978527a...",
+            "changed": 41,
+            "total": 50
+          },
+          {
+            "hash": "82e4d834af1dbb390e6b...",
+            "changed": 41,
+            "total": 50
+          },
+          {
+            "hash": "1cbc7277d962dfe2cbd9...",
+            "changed": 45,
+            "total": 50
+          },
+          {
+            "hash": "a0ab2a1e5c2fa0df0f5b...",
+            "changed": 47,
+            "total": 50
+          },
+          {
+            "hash": "6a3b7362dfbe15145240...",
+            "changed": 42,
+            "total": 50
+          },
+          {
+            "hash": "7e147fbf387462ca7cd9...",
+            "changed": 41,
+            "total": 50
+          },
+          {
+            "hash": "20bdacfef622272414d9...",
+            "changed": 45,
+            "total": 50
+          },
+          {
+            "hash": "fed3d9a20eeef8ab5580...",
+            "changed": 39,
+            "total": 50
+          },
+          {
+            "hash": "09e5276a43dffdb6bc38...",
+            "changed": 44,
+            "total": 50
+          },
+          {
+            "hash": "4951df0287aac829ee10...",
+            "changed": 41,
+            "total": 50
+          },
+          {
+            "hash": "4e7d7e2dc4396c93fad6...",
+            "changed": 46,
+            "total": 50
+          },
+          {
+            "hash": "b822fcd2127334888ba0...",
+            "changed": 44,
+            "total": 50
+          },
+          {
+            "hash": "6fa76cc680e6cf10a8f7...",
+            "changed": 48,
+            "total": 50
+          },
+          {
+            "hash": "cb1f25c4ec8e205de366...",
+            "changed": 39,
+            "total": 50
+          },
+          {
+            "hash": "f8adc54f337d85929c76...",
+            "changed": 43,
+            "total": 50
+          },
+          {
+            "hash": "b0abe9d94f55950d5968...",
+            "changed": 39,
+            "total": 50
+          },
+          {
+            "hash": "9a06ac89104f6b418639...",
+            "changed": 43,
+            "total": 50
+          },
+          {
+            "hash": "08ed2ded5c609d5ba70f...",
+            "changed": 43,
+            "total": 50
+          },
+          {
+            "hash": "bd1ff1212a9a5ffc6566...",
+            "changed": 44,
+            "total": 50
+          },
+          {
+            "hash": "2363f66cb13a6a07e229...",
+            "changed": 40,
+            "total": 50
+          },
+          {
+            "hash": "56eebdce9acc0e190912...",
+            "changed": 40,
+            "total": 50
+          },
+          {
+            "hash": "2c16421e569b99e448da...",
+            "changed": 39,
+            "total": 50
+          },
+          {
+            "hash": "5a3eecab696a3245ba00...",
+            "changed": 44,
+            "total": 50
+          },
+          {
+            "hash": "3a37ad7162b90f0d52c2...",
+            "changed": 43,
+            "total": 50
+          },
+          {
+            "hash": "f58131b1c204a22d0962...",
+            "changed": 41,
+            "total": 50
+          },
+          {
+            "hash": "7946ce0012433100e55f...",
+            "changed": 43,
+            "total": 50
+          },
+          {
+            "hash": "ab15d706a4bce699333c...",
+            "changed": 43,
+            "total": 50
+          },
+          {
+            "hash": "00f28fa3606fcc7734b2...",
+            "changed": 40,
+            "total": 50
+          },
+          {
+            "hash": "43ce5f59bedeaeb572c9...",
+            "changed": 36,
+            "total": 50
+          },
+          {
+            "hash": "2265dfd2dbb89005f14e...",
+            "changed": 46,
+            "total": 50
+          },
+          {
+            "hash": "4a5a254e8b30b8ea3051...",
+            "changed": 39,
+            "total": 50
+          },
+          {
+            "hash": "f97d9133fae80b00d9f9...",
+            "changed": 39,
+            "total": 50
+          },
+          {
+            "hash": "e7defafcdd09f2839734...",
+            "changed": 42,
+            "total": 50
+          },
+          {
+            "hash": "e88abd476a81a97ab9c6...",
+            "changed": 41,
+            "total": 50
+          },
+          {
+            "hash": "62dbae1ba741a65675fc...",
+            "changed": 43,
+            "total": 50
+          },
+          {
+            "hash": "55c880df4897757e056e...",
+            "changed": 38,
+            "total": 50
+          },
+          {
+            "hash": "78d9c3b0d87b1eb9fb0f...",
+            "changed": 41,
+            "total": 50
+          },
+          {
+            "hash": "6a4a4aff75cfdf369ed7...",
+            "changed": 39,
+            "total": 50
+          },
+          {
+            "hash": "d6ffac01175c926ab69a...",
+            "changed": 44,
+            "total": 50
+          },
+          {
+            "hash": "141e235b9b8ac31e511d...",
+            "changed": 42,
+            "total": 50
+          },
+          {
+            "hash": "7160a664030d1cd4e528...",
+            "changed": 39,
+            "total": 50
+          },
+          {
+            "hash": "0ebf7eea1e92f239b5fc...",
+            "changed": 42,
+            "total": 50
+          },
+          {
+            "hash": "f0234fb4dd1adced053a...",
+            "changed": 43,
+            "total": 50
+          },
+          {
+            "hash": "87a810ea7d4c5e6f0ec7...",
+            "changed": 41,
+            "total": 50
+          },
+          {
+            "hash": "3ef02dd0d5b203942158...",
+            "changed": 41,
+            "total": 50
+          },
+          {
+            "hash": "4b0c53ce52084127a5bf...",
+            "changed": 43,
+            "total": 50
+          },
+          {
+            "hash": "6c54917493ef605dcc21...",
+            "changed": 43,
+            "total": 50
+          },
+          {
+            "hash": "3c77e5033d862fd7f3bb...",
+            "changed": 42,
+            "total": 50
+          },
+          {
+            "hash": "9108a35e11af035bac83...",
+            "changed": 40,
+            "total": 50
+          },
+          {
+            "hash": "a3030c6ce5edbcdd2c58...",
+            "changed": 42,
+            "total": 50
+          },
+          {
+            "hash": "c79c941377e09fb0a58c...",
+            "changed": 47,
+            "total": 50
+          },
+          {
+            "hash": "973f7f090addec900b7e...",
+            "changed": 48,
+            "total": 50
+          },
+          {
+            "hash": "54aa5f6b9439b96a09c0...",
+            "changed": 42,
+            "total": 50
+          },
+          {
+            "hash": "a5b4c1ade90b3dbb9a3d...",
+            "changed": 39,
+            "total": 50
+          },
+          {
+            "hash": "a4ee303adbf8c12d5e1f...",
+            "changed": 42,
+            "total": 50
+          },
+          {
+            "hash": "b4a8e144c37a75063f33...",
+            "changed": 43,
+            "total": 50
+          },
+          {
+            "hash": "da25b0c1151f98a96d3b...",
+            "changed": 46,
+            "total": 50
+          },
+          {
+            "hash": "e27d82f71cd25ef2801e...",
+            "changed": 41,
+            "total": 50
+          },
+          {
+            "hash": "2079f60c6fc7be5d1d66...",
+            "changed": 39,
+            "total": 50
+          },
+          {
+            "hash": "a3429e224dacb88bdaf5...",
+            "changed": 37,
+            "total": 50
+          },
+          {
+            "hash": "aa5a0ebec7b501520cb8...",
+            "changed": 39,
+            "total": 50
+          },
+          {
+            "hash": "ece673adffdea12c523e...",
+            "changed": 41,
+            "total": 50
+          },
+          {
+            "hash": "e687319e58ebf551e077...",
+            "changed": 43,
+            "total": 50
+          },
+          {
+            "hash": "676a3583aeff04b6a255...",
+            "changed": 35,
+            "total": 50
+          },
+          {
+            "hash": "3d527dabd082f8f28057...",
+            "changed": 41,
+            "total": 50
+          },
+          {
+            "hash": "fc1030198e165130c8f0...",
+            "changed": 44,
+            "total": 50
+          },
+          {
+            "hash": "ec488374e9c0babe94be...",
+            "changed": 35,
+            "total": 50
+          },
+          {
+            "hash": "4403b27af945d239d621...",
+            "changed": 39,
+            "total": 50
+          },
+          {
+            "hash": "209fbb48d5f484818998...",
+            "changed": 44,
+            "total": 50
+          },
+          {
+            "hash": "4aaeafe82e9efe993684...",
+            "changed": 44,
+            "total": 50
+          },
+          {
+            "hash": "4e7f088667f778e6d8da...",
+            "changed": 43,
+            "total": 50
+          },
+          {
+            "hash": "29ce5ad91bd45342dae7...",
+            "changed": 41,
+            "total": 50
+          },
+          {
+            "hash": "a238da33084e5de46794...",
+            "changed": 42,
+            "total": 50
+          },
+          {
+            "hash": "12e8fdc4c40f2011dc6e...",
+            "changed": 40,
+            "total": 50
+          },
+          {
+            "hash": "397255ffc087cc005bce...",
+            "changed": 45,
+            "total": 50
+          },
+          {
+            "hash": "f739d077bd2fcaabed23...",
+            "changed": 42,
+            "total": 50
+          },
+          {
+            "hash": "8b97dd2341edd3c22f59...",
+            "changed": 42,
+            "total": 50
+          },
+          {
+            "hash": "6743e9cf95ba066ae39c...",
+            "changed": 39,
+            "total": 50
+          },
+          {
+            "hash": "7a4ea216bc1d25462fd2...",
+            "changed": 47,
+            "total": 50
+          },
+          {
+            "hash": "c674f218354aa57ba1a3...",
+            "changed": 41,
+            "total": 50
+          },
+          {
+            "hash": "f8435b8fe5f97d8f00f4...",
+            "changed": 42,
+            "total": 50
+          },
+          {
+            "hash": "a3e9b3d0d3bd81f40e43...",
+            "changed": 42,
+            "total": 50
+          },
+          {
+            "hash": "3351b857b50e533a60a0...",
+            "changed": 40,
+            "total": 50
+          },
+          {
+            "hash": "68d927e3b9f0a945222a...",
+            "changed": 38,
+            "total": 50
+          },
+          {
+            "hash": "9ba5e4b2d361b53163c9...",
+            "changed": 48,
+            "total": 50
+          },
+          {
+            "hash": "d5306f89d6b7f6d85dcc...",
+            "changed": 42,
+            "total": 50
+          },
+          {
+            "hash": "375a48f9930c4df48a10...",
+            "changed": 42,
+            "total": 50
+          },
+          {
+            "hash": "2a404c084984ea9c948d...",
+            "changed": 44,
+            "total": 50
+          },
+          {
+            "hash": "5d914de946ca4fea88a9...",
+            "changed": 41,
+            "total": 50
+          },
+          {
+            "hash": "2475c65bd35ad3b7b22a...",
+            "changed": 46,
+            "total": 50
+          },
+          {
+            "hash": "3fc6c0699c6cc23da9ef...",
+            "changed": 43,
+            "total": 50
+          },
+          {
+            "hash": "74481b1c82e0f46b8b0a...",
+            "changed": 43,
+            "total": 50
+          },
+          {
+            "hash": "2541482e312a373010bb...",
+            "changed": 43,
+            "total": 50
+          },
+          {
+            "hash": "fb79d981b4416944436a...",
+            "changed": 43,
+            "total": 50
+          },
+          {
+            "hash": "a4b81198e17f7b164994...",
+            "changed": 48,
+            "total": 50
+          },
+          {
+            "hash": "58cf8f82e49f62e0ea6d...",
+            "changed": 41,
+            "total": 50
+          },
+          {
+            "hash": "bdd9e2483b713e161095...",
+            "changed": 44,
+            "total": 50
+          },
+          {
+            "hash": "6bab889caf0d90af53dd...",
+            "changed": 42,
+            "total": 50
+          },
+          {
+            "hash": "effe3b04266a8df0905c...",
+            "changed": 40,
+            "total": 50
+          },
+          {
+            "hash": "31bac9348858410a06b3...",
+            "changed": 45,
+            "total": 50
+          },
+          {
+            "hash": "6f70b8229ebcd1c1e14c...",
+            "changed": 46,
+            "total": 50
+          },
+          {
+            "hash": "c38d0fac14b9050c2983...",
+            "changed": 41,
+            "total": 50
+          },
+          {
+            "hash": "a8d858aa68842a954609...",
+            "changed": 41,
+            "total": 50
+          },
+          {
+            "hash": "6d084e68d0cff3d1960f...",
+            "changed": 45,
+            "total": 50
+          },
+          {
+            "hash": "ede4482d4eeaa977c979...",
+            "changed": 44,
+            "total": 50
+          },
+          {
+            "hash": "1020bd5c168b3f034e4a...",
+            "changed": 48,
+            "total": 50
+          },
+          {
+            "hash": "074c318485b3e7e031b0...",
+            "changed": 43,
+            "total": 50
+          },
+          {
+            "hash": "fafb8434cb0803e90252...",
+            "changed": 41,
+            "total": 50
+          },
+          {
+            "hash": "491d96fef983c280beae...",
+            "changed": 45,
+            "total": 50
+          },
+          {
+            "hash": "87c0a676ecb44095a021...",
+            "changed": 41,
+            "total": 50
+          },
+          {
+            "hash": "eca3b98f4038afd06e30...",
+            "changed": 45,
+            "total": 50
+          },
+          {
+            "hash": "7ff67138f35a46d50e64...",
+            "changed": 41,
+            "total": 50
+          },
+          {
+            "hash": "06cad74546397c675b9e...",
+            "changed": 41,
+            "total": 50
+          },
+          {
+            "hash": "623bff43233d3b720d40...",
+            "changed": 41,
+            "total": 50
+          },
+          {
+            "hash": "686ad03a75728861c949...",
+            "changed": 47,
+            "total": 50
+          },
+          {
+            "hash": "3f923ae7a6cb773926df...",
+            "changed": 41,
+            "total": 50
+          },
+          {
+            "hash": "dd4e59e9017c363fbf72...",
+            "changed": 41,
+            "total": 50
+          },
+          {
+            "hash": "ba66f9c80659664e1cbd...",
+            "changed": 46,
+            "total": 50
+          },
+          {
+            "hash": "705e8895c942733cf7be...",
+            "changed": 32,
+            "total": 50
+          },
+          {
+            "hash": "91003b3c74ef1e54ee2c...",
+            "changed": 49,
+            "total": 50
+          },
+          {
+            "hash": "fcada199e685193d32be...",
+            "changed": 43,
+            "total": 50
+          },
+          {
+            "hash": "f1bbd1bd36c2b46db79b...",
+            "changed": 44,
+            "total": 50
+          },
+          {
+            "hash": "7d196e32d00a68a9e2a4...",
+            "changed": 41,
+            "total": 50
+          },
+          {
+            "hash": "156b501dac10fa225ea1...",
+            "changed": 43,
+            "total": 50
+          },
+          {
+            "hash": "b54599eda693afd11685...",
+            "changed": 40,
+            "total": 50
+          },
+          {
+            "hash": "1ecf2bad2920a4bcd697...",
+            "changed": 44,
+            "total": 50
+          },
+          {
+            "hash": "be0e9fcf1812b6a0f724...",
+            "changed": 40,
+            "total": 50
+          },
+          {
+            "hash": "3b7dc18e27c4539a681c...",
+            "changed": 42,
+            "total": 50
+          },
+          {
+            "hash": "debfede46cc0af86346d...",
+            "changed": 39,
+            "total": 50
+          },
+          {
+            "hash": "d9207ca0f8e1717f6653...",
+            "changed": 45,
+            "total": 50
+          },
+          {
+            "hash": "9cfae7ed8e3fc4b05cdf...",
+            "changed": 42,
+            "total": 50
+          },
+          {
+            "hash": "95f9b198d0ca87a4b8b2...",
+            "changed": 41,
+            "total": 50
+          },
+          {
+            "hash": "09513ec6ad7b8b603474...",
+            "changed": 43,
+            "total": 50
+          },
+          {
+            "hash": "e2f213d5d7389dc95b21...",
+            "changed": 42,
+            "total": 50
+          },
+          {
+            "hash": "e2ca55674f8703fe8012...",
+            "changed": 41,
+            "total": 50
+          },
+          {
+            "hash": "80aea139cb50b44d5e38...",
+            "changed": 39,
+            "total": 50
+          },
+          {
+            "hash": "95dc96ca8a71fb013be4...",
+            "changed": 41,
+            "total": 50
+          },
+          {
+            "hash": "3de76da07892329c5f56...",
+            "changed": 46,
+            "total": 50
+          }
+        ]
+      }
+    },
+    {
+      "step": 7,
+      "name": "Payout Math",
+      "ecRefs": [
+        "EC-11",
+        "EC-18"
+      ],
+      "severity": "PASS",
+      "pass": true,
+      "summary": "All 8100 bets: win_amount = amount_currency × payout_multiplier (tolerance 1e-8)",
+      "failures": [],
+      "details": {
+        "checked": 8100,
+        "tolerance": "1e-8"
+      }
+    },
+    {
+      "step": 8,
+      "name": "Multiplier Table Provenance",
+      "ecRefs": [
+        "EC-28",
+        "EC-32"
+      ],
+      "severity": "PASS",
+      "pass": true,
+      "summary": "Given the committed plinkoConfig.json multiplier table, independently-derived binomial probabilities P(slot)=C(rows,k)/2^rows produce 99.9000% RTP (analytic identity over the full table). Live play verifies the observed payout entries (263/351); unobserved rare-slot entries are evaluated from the committed table. 8100/8100 bets match scaling_edge[0].multipliers.",
+      "failures": [],
+      "details": {
+        "total": 8100,
+        "payoutTableMatches": 8100,
+        "scalingEdgeMatches": 8100,
+        "ptOnlyMatches": 0,
+        "seOnlyMatches": 0,
+        "neitherMatches": 0,
+        "referenceTable": "scaling_edge[0].multipliers",
+        "configLoadTimestamp": "plinkoConfig.json loaded separately — predates capture",
+        "theoreticalRTPs": {
+          "8r/low": 0.999000001796875,
+          "8r/medium": 0.9990000015625001,
+          "8r/high": 0.9990000005468751,
+          "9r/low": 0.9990000021875001,
+          "9r/medium": 0.99900000234375,
+          "9r/high": 0.9990000005078125,
+          "10r/low": 0.9989999974804687,
+          "10r/medium": 0.9990000021679687,
+          "10r/high": 0.9990000002734376,
+          "11r/low": 0.9989999994335936,
+          "11r/medium": 0.9990000016503905,
+          "11r/high": 0.9990000005078125,
+          "12r/low": 0.9990000005859376,
+          "12r/medium": 0.9990000007519532,
+          "12r/high": 0.9990000011816407,
+          "13r/low": 0.9989999999902343,
+          "13r/medium": 0.9990000001660156,
+          "13r/high": 0.9990000011450194,
+          "14r/low": 0.998999999506836,
+          "14r/medium": 0.999000001706543,
+          "14r/high": 0.9990000004406738,
+          "15r/low": 0.9990000005273438,
+          "15r/medium": 0.9990000007232666,
+          "15r/high": 0.999000000333252,
+          "16r/low": 0.9989999989468383,
+          "16r/medium": 0.9989999983651733,
+          "16r/high": 0.9989999995104982
+        },
+        "avgTheoreticalRTP": 0.999000000531119,
+        "observedTableEntries": 263,
+        "totalTableEntries": 351
+      }
+    },
+    {
+      "step": 9,
+      "name": "Phase C Code-Path Equivalence",
+      "ecRefs": [
+        "EC-15",
+        "EC-16",
+        "EC-17"
+      ],
+      "severity": "PASS",
+      "pass": true,
+      "summary": "Phase C: 200/200 slots recomputed correctly at $10, all multipliers match Phase B table. Equivalence proven deterministically.",
+      "failures": [],
+      "details": {
+        "phaseCSlotRecomputed": 200,
+        "phaseCSlotSkipped": 0,
+        "evidence": "Phase C equivalence is proven deterministically: slots recomputed correctly at $10 using the same HMAC-SHA256 path, and all multipliers match the same scaling_edge[0] table as Phase B. No distributional test is used — sample size (n=200) is too small for meaningful statistical comparison."
+      }
+    },
+    {
+      "step": 10,
+      "name": "Zero Edge Audit",
+      "ecRefs": [
+        "EC-23"
+      ],
+      "severity": "PASS",
+      "pass": true,
+      "summary": "All effective_edge groups (0.1, 0) use the same multiplier table",
+      "failures": [],
+      "details": {
+        "edgeGroups": {
+          "edge_0.1": {
+            "count": 7563,
+            "multiplierMismatches": 0
+          },
+          "edge_0": {
+            "count": 537,
+            "multiplierMismatches": 0
+          }
+        }
+      }
+    },
+    {
+      "step": 11,
+      "name": "Config Completeness",
+      "ecRefs": [
+        "EC-30"
+      ],
+      "severity": "PASS",
+      "pass": true,
+      "summary": "All 27 configs have >= 100 Phase A bets. Min: 200, Total: 5400/5400",
+      "failures": [],
+      "details": {
+        "configCounts": {
+          "8r/high": 200,
+          "11r/medium": 200,
+          "11r/high": 200,
+          "15r/high": 200,
+          "10r/medium": 200,
+          "11r/low": 200,
+          "10r/low": 200,
+          "9r/medium": 200,
+          "16r/high": 200,
+          "10r/high": 200,
+          "12r/high": 200,
+          "13r/medium": 200,
+          "14r/medium": 200,
+          "16r/low": 200,
+          "8r/medium": 200,
+          "13r/low": 200,
+          "14r/low": 200,
+          "12r/medium": 200,
+          "9r/low": 200,
+          "16r/medium": 200,
+          "14r/high": 200,
+          "15r/low": 200,
+          "13r/high": 200,
+          "8r/low": 200,
+          "9r/high": 200,
+          "15r/medium": 200,
+          "12r/low": 200
+        },
+        "totalPhaseA": 5400,
+        "totalCorrect": true,
+        "imbalancedConfigs": 0,
+        "minSample": 200,
+        "note": "Phase A uses balanced queue: 108 epochs x 50 bets = 5400, exactly 200 bets per config. IndexedDB capture eliminates localStorage quota issues."
+      }
+    },
+    {
+      "step": 12,
+      "name": "Epoch Size",
+      "ecRefs": [
+        "EC-31"
+      ],
+      "severity": "PASS",
+      "pass": true,
+      "summary": "All 162 epochs have exactly 50 bets",
+      "failures": [],
+      "details": {
+        "epochs": 162
+      }
+    },
+    {
+      "step": 13,
+      "name": "Multiplier Table + Symmetry",
+      "ecRefs": [
+        "EC-10",
+        "EC-12",
+        "EC-13",
+        "EC-14"
+      ],
+      "severity": "PASS",
+      "pass": true,
+      "summary": "Given the committed plinkoConfig.json multiplier table, slot symmetry holds across all 27 configs and the 16r/high 0.2× floor is satisfied. Live bets confirm their observed multipliers against the same table (tol 1e-5); unobserved rare-slot entries are validated structurally via the symmetry identity over the full committed table.",
+      "failures": []
+    },
+    {
+      "step": 14,
+      "name": "Phase Labels",
+      "ecRefs": [
+        "EC-24"
+      ],
+      "severity": "PASS",
+      "pass": true,
+      "summary": "All 8100 bets and 166 seeds have valid phase labels",
+      "failures": [],
+      "details": {
+        "betPhases": {
+          "A": 5400,
+          "B": 2000,
+          "C": 200,
+          "D": 500
+        },
+        "seedPhases": {
+          "A": 109,
+          "B": 41,
+          "C": 5,
+          "D": 11
+        }
+      }
+    },
+    {
+      "step": 15,
+      "name": "Dataset Hash",
+      "ecRefs": [
+        "EC-25"
+      ],
+      "severity": "PASS",
+      "pass": true,
+      "summary": "SHA-256 of master JSON verified: 3cf9359d88220bc800bb32edfe04399f55b909302262928ee3a0582715635267",
+      "failures": [],
+      "details": {
+        "file": "data/plinko-master-8100bets.json",
+        "sizeBytes": 6105877,
+        "sha256": "3cf9359d88220bc800bb32edfe04399f55b909302262928ee3a0582715635267",
+        "expected": "3cf9359d88220bc800bb32edfe04399f55b909302262928ee3a0582715635267",
+        "match": true
+      }
+    },
+    {
+      "step": 16,
+      "name": "Scaling Edge Analysis",
+      "ecRefs": [
+        "EC-17",
+        "EC-32"
+      ],
+      "severity": "PASS",
+      "pass": true,
+      "summary": "All 27 configs: bracket[0] house_edge=0.001, both test amounts ≤ max_bet, symmetric multipliers",
+      "failures": [],
+      "details": {
+        "16r/high_bracket0": {
+          "house_edge": "0.001",
+          "max_bet": "335.946312864870400000",
+          "multipliers": [
+            "1009.33110594",
+            "131.21304378",
+            "26.24260875",
+            "9.08397996",
+            "4.03732442",
+            "2.01866221",
+            "0.20186622",
+            "0.20186622",
+            "0.20186622",
+            "0.20186622",
+            "0.20186622",
+            "2.01866221",
+            "4.03732442",
+            "9.08397996",
+            "26.24260875",
+            "131.21304378",
+            "1009.33110594"
+          ]
+        },
+        "progressiveEdge_sample_16r_high": {
+          "brackets": 191,
+          "minEdge": "0.001",
+          "maxEdge": "0.02"
+        }
+      }
+    },
+    {
+      "step": 17,
+      "name": "Probability Independence (Anti-Circularity)",
+      "ecRefs": [
+        "EC-33"
+      ],
+      "severity": "PASS",
+      "pass": true,
+      "summary": "Given the committed plinkoConfig.json multiplier table, independently-derived binomial probabilities P(slot)=C(rows,k)/2^rows produce 99.9% RTP (analytic identity over the full table) for all 27 configurations. All 351 per-slot probabilities exactly equal the independent binomial. Live play verifies the observed payout entries against the same committed table; unobserved rare-slot entries are evaluated from that table. The RTP proof is non-circular: probabilities come from stats.ts (binomProb), not from plinkoConfig.json.",
+      "failures": [],
+      "details": {
+        "probabilitiesChecked": 351,
+        "probabilityMismatches": 0,
+        "rtpCrossChecks": 27,
+        "rtpMismatches": 0,
+        "method": "binomProb(rows, k) = C(rows,k) * 0.5^rows from stats.ts — not sourced from plinkoConfig.json",
+        "significance": "Breaks circularity: theoretical RTP is computed from independently verified probabilities × observed multipliers."
+      }
+    },
+    {
+      "step": 18,
+      "name": "Phase D — Client Seed Variation",
+      "ecRefs": [
+        "EC-27"
+      ],
+      "severity": "PASS",
+      "pass": true,
+      "summary": "Phase D: 500/500 slots recomputed correctly. 10 distinct custom client seeds. 434/500 slots differ with wrong seed.",
+      "failures": [],
+      "details": {
+        "totalBets": 500,
+        "slotsChecked": 500,
+        "slotsSkipped": 0,
+        "slotMismatches": 0,
+        "distinctClientSeeds": 10,
+        "clientSeedInfluence": "434/500 slots changed with wrong seed (86.8%)"
+      }
+    },
+    {
+      "step": 19,
+      "name": "Simulation Results — Pass 1 Integrity",
+      "ecRefs": [
+        "EC-34"
+      ],
+      "severity": "PASS",
+      "pass": true,
+      "summary": "27,000,000 rounds × 27 configs; avg RTP=99.9166%. 0/27 configs fail at Bonferroni-corrected threshold (α/27 = 0.00037). 0/27 flag even at uncorrected α = 0.01.",
+      "failures": [],
+      "details": {
+        "totalRounds": 27000000,
+        "configs": 27,
+        "chi2FailsAtAlpha01": 0,
+        "chi2FailsAtBonferroni": 0,
+        "serialIndependenceFailsUncorrected": 0,
+        "serialIndependenceFailsBonferroni": 0,
+        "bonferroniAlpha": 0.00037037037037037035,
+        "avgTheoreticalRTP": 0.999000000531119,
+        "avgSimulatedRTP": 0.999166188296149,
+        "pass2Present": true
+      }
+    },
+    {
+      "step": 20,
+      "name": "Simulation Results — Pass 2 Cherry-Pick Test",
+      "ecRefs": [
+        "EC-35"
+      ],
+      "severity": "PASS",
+      "pass": true,
+      "summary": "Pass 2: 162 seeds × 10,000 nonces. Artifact verdicts: Test A=PASS, Test B=PASS. Test A: 1 fail(s). Early-window statistical flags: 10 of 242 combinations (within expected false-positive range; threshold 13). Multi-window breakdown: 8 isolated-early (consistent with random false positives), 2 multi-window distributional variation (noise). No cherry-pick signature. See info in details.",
+      "failures": [],
+      "details": {
+        "seeds_tested": 162,
+        "nonces_per_seed": 10000,
+        "epoch_length": 50,
+        "seed_row_combinations": 242,
+        "test_a_verdict": "PASS",
+        "test_b_verdict": "PASS",
+        "test_a_chi2_fails": 1,
+        "test_b_early_window_flags": 10,
+        "bonferroni_threshold": 13,
+        "multi_window_analysis": {
+          "windows_tested": 5,
+          "window_size": 50,
+          "flagged_combinations_analysed": 10,
+          "isolated_early_flags": 8,
+          "broad_deviation_flags": 2,
+          "results": [
+            {
+              "seed_hash": "abeed9e4d1fec3d2...",
+              "rows": 14,
+              "windowPValues": [
+                "0.0451",
+                "0.2813",
+                "0.9368",
+                "0.2699",
+                "0.2404"
+              ],
+              "deviatingWindows": 1,
+              "interpretation": "isolated early-window flag — within expected false-positive range"
+            },
+            {
+              "seed_hash": "b0abe9d94f55950d...",
+              "rows": 11,
+              "windowPValues": [
+                "0.0184",
+                "0.6514",
+                "0.4195",
+                "0.6631",
+                "0.4490"
+              ],
+              "deviatingWindows": 1,
+              "interpretation": "isolated early-window flag — within expected false-positive range"
+            },
+            {
+              "seed_hash": "2265dfd2dbb89005...",
+              "rows": 12,
+              "windowPValues": [
+                "0.0143",
+                "0.3865",
+                "0.6090",
+                "0.8748",
+                "0.6837"
+              ],
+              "deviatingWindows": 1,
+              "interpretation": "isolated early-window flag — within expected false-positive range"
+            },
+            {
+              "seed_hash": "676a3583aeff04b6...",
+              "rows": 9,
+              "windowPValues": [
+                "0.0223",
+                "0.5015",
+                "0.2738",
+                "0.1390",
+                "0.6840"
+              ],
+              "deviatingWindows": 1,
+              "interpretation": "isolated early-window flag — within expected false-positive range"
+            },
+            {
+              "seed_hash": "ede4482d4eeaa977...",
+              "rows": 16,
+              "windowPValues": [
+                "0.0202",
+                "0.8300",
+                "0.2954",
+                "0.9719",
+                "0.1117"
+              ],
+              "deviatingWindows": 1,
+              "interpretation": "isolated early-window flag — within expected false-positive range"
+            },
+            {
+              "seed_hash": "9cfae7ed8e3fc4b0...",
+              "rows": 10,
+              "windowPValues": [
+                "0.0321",
+                "0.2572",
+                "0.3195",
+                "0.6278",
+                "0.0377"
+              ],
+              "deviatingWindows": 2,
+              "interpretation": "multi-window distributional variation — consistent with noise"
+            },
+            {
+              "seed_hash": "95dc96ca8a71fb01...",
+              "rows": 8,
+              "windowPValues": [
+                "0.0094",
+                "0.3096",
+                "0.6073",
+                "0.1470",
+                "0.1337"
+              ],
+              "deviatingWindows": 1,
+              "interpretation": "isolated early-window flag — within expected false-positive range"
+            },
+            {
+              "seed_hash": "95dc96ca8a71fb01...",
+              "rows": 12,
+              "windowPValues": [
+                "0.0372",
+                "0.4740",
+                "0.8455",
+                "0.1247",
+                "0.1683"
+              ],
+              "deviatingWindows": 1,
+              "interpretation": "isolated early-window flag — within expected false-positive range"
+            },
+            {
+              "seed_hash": "95dc96ca8a71fb01...",
+              "rows": 13,
+              "windowPValues": [
+                "0.0104",
+                "0.9117",
+                "0.4390",
+                "0.4527",
+                "0.5133"
+              ],
+              "deviatingWindows": 1,
+              "interpretation": "isolated early-window flag — within expected false-positive range"
+            },
+            {
+              "seed_hash": "3de76da07892329c...",
+              "rows": 9,
+              "windowPValues": [
+                "0.0080",
+                "0.8936",
+                "0.0349",
+                "0.3947",
+                "0.8483"
+              ],
+              "deviatingWindows": 2,
+              "interpretation": "multi-window distributional variation — consistent with noise"
+            }
+          ]
+        },
+        "info": [
+          "Test A: 1 seed(s) fail full-range chi-squared at α=0.01 — within expected FWER range (2.4 expected for 242 combinations). Informational.",
+          "Test B: 10 early-window statistical flag(s) within expected false-positive range (≤13 at α=0.05 across 242 combinations). Statistical power is limited: early bucket has ~50 nonces. Informational."
+        ],
+        "power_note": "Test B early bucket (~50 nonces) has limited statistical power on high-row configs — pooled bins may reduce to 2–3 df. Absence of flags is not a proof of absence of cherry-picking; it means no statistically detectable pattern was found."
+      }
+    }
+  ],
+  "informational": [
+    {
+      "label": "RTP Analysis",
+      "detail": "Empirical RTP: A=99.303% (5400 bets) B=92.313% (2000 bets) C=74.993% (200 bets). Deviations from 99.9% are expected at these sample sizes — high-multiplier slots (up to 1009×) create large per-bet variance. Theoretical RTP=99.900% proven analytically in Step 17."
+    },
+    {
+      "label": "Serial Independence (lag-1)",
+      "detail": "Phase B: r₁=-0.0056 (±0.0671 = 3/√n threshold), z=-0.25. Tested on Phase B only (2000 same-config bets) to avoid cross-config ordering artifacts. At 2000 bets, power is limited — simulation Pass 1 tests at 1M rounds per config."
+    },
+    {
+      "label": "Serial Independence (runs test)",
+      "detail": "Phase B: runs z=0.300, p=0.7645. Tested on Phase B only (2000 same-config bets) to avoid cross-config ordering artifacts. Per-config simulation in Pass 1 confirms RNG outputs are serially independent."
+    },
+    {
+      "label": "Slot Symmetry (Live Bets)",
+      "detail": "27 configs tested with n≥100; 1 fail at α=0.01 (~200 bets/config insufficient; see simulation Pass 1)"
+    }
+  ]
+}
