@@ -4,7 +4,10 @@
  */
 
 import type { StepResult, RiskLevel } from '../../src/types';
-import { loadMasterBuffer } from '../../src/loader';
+import {
+  loadMasterBuffer,
+  EXPECTED_BETS, EXPECTED_SEEDS, EXPECTED_PHASE_BETS,
+} from '../../src/loader';
 import { sha256Buffer } from '../../src/rng';
 import { pass, fail, VerifyContext } from './context';
 
@@ -184,12 +187,26 @@ export function run(ctx: VerifyContext): StepResult[] {
       seedPhaseCounts[s.phase] = (seedPhaseCounts[s.phase] ?? 0) + 1;
     }
 
-    const r = failures.length === 0
-      ? pass(14, 'Phase Labels', ['EC-24'],
-          `All ${bets.length} bets and ${seeds.length} seeds have valid phase labels`,
+    // Labels alone are not a population. Every count above is read from inside the file
+    // being scored, so a uniform shrink keeps every label valid and every ratio intact.
+    // Compare against the code constants the dataset does not control, and HARD_FAIL.
+    const popIssues: string[] = [];
+    if (bets.length !== EXPECTED_BETS) popIssues.push(`bets ${bets.length} != ${EXPECTED_BETS}`);
+    if (seeds.length !== EXPECTED_SEEDS) popIssues.push(`seed records ${seeds.length} != ${EXPECTED_SEEDS}`);
+    for (const [p, n] of Object.entries(EXPECTED_PHASE_BETS)) {
+      const got = (phaseCounts as Record<string, number>)[p] ?? 0;
+      if (got !== n) popIssues.push(`phase ${p} ${got} != ${n}`);
+    }
+
+    const r = failures.length === 0 && popIssues.length === 0
+      ? pass(14, 'Population & Phase Labels', ['EC-24'],
+          `All ${bets.length} bets and ${seeds.length} seeds have valid phase labels, and the population matches the capture plan in src/loader.ts (code constants, not the dataset header)`,
           { betPhases: phaseCounts, seedPhases: seedPhaseCounts })
-      : fail(14, 'Phase Labels', ['EC-24'], 'FLAG',
-          `${failures.length} invalid phase labels`, failures.slice(0, 10));
+      : fail(14, 'Population & Phase Labels', ['EC-24'], 'HARD_FAIL',
+          popIssues.length
+            ? `POPULATION MISMATCH vs the capture plan in src/loader.ts: ${popIssues.join('; ')}`
+            : `${failures.length} invalid phase labels`,
+          popIssues.length ? popIssues : failures.slice(0, 10));
     results.push(r);
     console.log(`  [${r.pass ? 'PASS' : 'FAIL'}] Step 14 — ${r.name}`);
   }

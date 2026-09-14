@@ -101,3 +101,16 @@ export function revealedSeeds(seeds: SeedEntry[]): SeedEntry[] {
 export function phaseBets(bets: Bet[], phase: 'A' | 'B' | 'C' | 'D'): Bet[] {
   return bets.filter(b => b.phase === phase);
 }
+
+// ── POPULATION OF RECORD ─────────────────────────────────────────────────────────
+// The capture plan, stated as CODE so a shrunken dataset cannot pass by agreeing with
+// itself. Deleting rounds and doctoring the header to match leaves a file that is
+// internally consistent and re-pins cleanly — and re-pinning is exactly what a forger
+// does, so the expected hash cannot see it. The counts have to be asserted from
+// somewhere the dataset does not control, and a step that finds them wrong must
+// HARD_FAIL. Step 14 previously validated phase LABELS but never the phase COUNTS,
+// so a uniformly shrunken capture kept every label valid and passed.
+export const EXPECTED_BETS  = 8100;
+export const EXPECTED_SEEDS = 166;
+export const EXPECTED_PHASE_BETS: Readonly<Record<string, number>> =
+  Object.freeze({ A: 5400, B: 2000, C: 200, D: 500 });

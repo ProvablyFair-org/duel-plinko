@@ -27,6 +27,7 @@ import * as antiCircularity from './steps/anti-circularity';
 import * as phaseDStep     from './steps/phase-d';
 import * as simulation     from './steps/simulation';
 import * as statistical    from './steps/statistical';
+import * as artifacts      from './steps/artifacts';
 
 // ── Setup ─────────────────────────────────────────────────────────────────────
 
@@ -113,6 +114,7 @@ const datasetResults = dataset.run(ctx);           // Steps 10–16
 const antiCircResults = antiCircularity.run(ctx);  // Step  17
 const phaseDResults = phaseDStep.run(ctx);          // Step  18
 const simulationResults = simulation.run(ctx);     // Steps 19–20
+const artifactResults = artifacts.run(ctx);        // Step  21
 
 const results: StepResult[] = [
   ...commitmentResults,
@@ -122,6 +124,7 @@ const results: StepResult[] = [
   ...antiCircResults,
   ...phaseDResults,
   ...simulationResults,
+  ...artifactResults,
 ];
 
 // ── Informational context (not scored) ────────────────────────────────────────

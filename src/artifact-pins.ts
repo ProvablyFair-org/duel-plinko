@@ -1,0 +1,14 @@
+/**
+ * ARTIFACTS OF RECORD — pinned.
+ *
+ * Shipped as evidence and quoted in the report, but until this pin existed nothing hashed them:
+ * emptying, duplicating or shrinking any of them left the verifier reporting Full Pass, exit 0.
+ * Files this verifier REWRITES each run are deliberately absent — pinning one would fail on the
+ * second run; that they are rewritten at all is a separate defect.
+ */
+export const ARTIFACT_PINS: Readonly<Record<string, string>> = Object.freeze({
+  'rtp-convergence.html':
+    '5b901fbfcdebfe473aba86a0010bc573a022d121904b3fd0c8707b0399b76e62',
+  'simulation-results.json':
+    '40e749a31f16f75087961d3928bf07df2da32088b823468510292a0034ff7557',
+});

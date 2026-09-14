@@ -1,5 +1,5 @@
 {
-  "runAt": "2026-06-10T12:29:15.364Z",
+  "runAt": "2026-09-14T19:55:28.913Z",
   "dataset": {
     "bets": 8100,
     "seeds": 166,
@@ -24,7 +24,7 @@
   },
   "verdict": "PROVABLY FAIR — Full Pass",
   "summary": {
-    "passed": 20,
+    "passed": 21,
     "hardFails": 0,
     "flags": 0
   },
@@ -1138,13 +1138,13 @@
     },
     {
       "step": 14,
-      "name": "Phase Labels",
+      "name": "Population & Phase Labels",
       "ecRefs": [
         "EC-24"
       ],
       "severity": "PASS",
       "pass": true,
-      "summary": "All 8100 bets and 166 seeds have valid phase labels",
+      "summary": "All 8100 bets and 166 seeds have valid phase labels, and the population matches the capture plan in src/loader.ts (code constants, not the dataset header)",
       "failures": [],
       "details": {
         "betPhases": {
@@ -1447,6 +1447,17 @@
         ],
         "power_note": "Test B early bucket (~50 nonces) has limited statistical power on high-row configs — pooled bins may reduce to 2–3 df. Absence of flags is not a proof of absence of cherry-picking; it means no statistically detectable pattern was found."
       }
+    },
+    {
+      "step": 21,
+      "name": "Artifact Integrity (pinned artifacts of record)",
+      "ecRefs": [
+        "EC-25"
+      ],
+      "severity": "PASS",
+      "pass": true,
+      "summary": "2 artifact(s) match src/artifact-pins.ts: rtp-convergence.html matches its pin; simulation-results.json matches its pin",
+      "failures": []
     }
   ],
   "informational": [
