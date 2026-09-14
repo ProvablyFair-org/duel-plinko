@@ -32,6 +32,8 @@ import * as artifacts      from './steps/artifacts';
 // ── Setup ─────────────────────────────────────────────────────────────────────
 
 const OUTPUTS_DIR = path.join(__dirname, '..', 'outputs');
+const RUN_DIR = path.join(OUTPUTS_DIR, 'run');
+fs.mkdirSync(RUN_DIR, { recursive: true });
 fs.mkdirSync(OUTPUTS_DIR, { recursive: true });
 
 const CONFIG_FILE = path.join(__dirname, '..', 'plinkoConfig.json');
@@ -207,10 +209,13 @@ const determinismOutput = {
   log: determinismLog,
 };
 fs.writeFileSync(
-  path.join(OUTPUTS_DIR, 'determinism-log.json'),
+  // RUN PRODUCTS, not artifacts of record: derived wholly from THIS run, yet written on top of
+  // the committed copies — so the verifier replaced the evidence it scores, a forged copy was
+  // overwritten rather than detected, and the committed bytes drifted every run.
+  path.join(RUN_DIR, 'determinism-log.json'),
   JSON.stringify(determinismOutput, null, 2)
 );
-console.log(`  Outputs written to: outputs/determinism-log.json`);
+console.log(`  Run products written to: outputs/run/determinism-log.json`);
 
 const chiSquaredOutput = {
   generatedAt: new Date().toISOString(),
@@ -222,7 +227,8 @@ const chiSquaredOutput = {
   results: chiSquaredLog.sort((a, b) => a.config.localeCompare(b.config)),
 };
 fs.writeFileSync(
-  path.join(OUTPUTS_DIR, 'chi-squared-results.json'),
+  path.join(RUN_DIR, 'chi-squared-results.json'),
   JSON.stringify(chiSquaredOutput, null, 2)
 );
-console.log(`  Outputs written to: outputs/chi-squared-results.json`);
+console.log(`  Run products written to: outputs/run/chi-squared-results.json`);
+console.log(`  Committed artifacts NOT modified.`);

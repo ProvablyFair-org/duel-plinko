@@ -10,3 +10,6 @@ results/merged/*.json
 !results/merged/.gitkeep
 .DS_Store
 .browser-profile/
+
+# run products — this verifier writes them fresh each run; the committed artifacts are pinned
+outputs/run/
