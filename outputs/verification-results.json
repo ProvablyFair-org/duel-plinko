@@ -1,5 +1,5 @@
 {
-  "runAt": "2026-09-14T19:55:28.913Z",
+  "runAt": "2026-09-17T21:20:53.714Z",
   "dataset": {
     "bets": 8100,
     "seeds": 166,
@@ -959,11 +959,12 @@
       ],
       "severity": "PASS",
       "pass": true,
-      "summary": "All 8100 bets: win_amount = amount_currency × payout_multiplier (tolerance 1e-8)",
+      "summary": "All 8100 bets: payout_multiplier is on the 8-dp grid and win_amount = amount_currency × payout_multiplier (relative 1e-12)",
       "failures": [],
       "details": {
         "checked": 8100,
-        "tolerance": "1e-8"
+        "multiplierGridDp": 8,
+        "relTolerance": 1e-12
       }
     },
     {
@@ -1456,7 +1457,7 @@
       ],
       "severity": "PASS",
       "pass": true,
-      "summary": "2 artifact(s) match src/artifact-pins.ts: rtp-convergence.html matches its pin; simulation-results.json matches its pin",
+      "summary": "4 artifact(s) match src/artifact-pins.ts: chi-squared-results.json matches its pin; determinism-log.json matches its pin; rtp-convergence.html matches its pin; simulation-results.json matches its pin",
       "failures": []
     }
   ],

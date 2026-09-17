@@ -40,7 +40,7 @@ Final slot = sum of right-bounces across all rows (0 to `rows`). The multiplier 
 
 ## Verification
 
-- **Verification steps:** 20 scored steps in `tests/verify.ts`
+- **Verification steps:** 21 scored steps in `tests/verify.ts`
 - **Unit tests:** Mocha (`tests/**/*Tests.ts`)
 - **Simulation:** 27,000,000 rounds across 27 configs (two-pass: fresh seeds + casino seeds)
 - **Expected `npm test` result:** all green, 0 failures

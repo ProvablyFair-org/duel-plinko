@@ -14,5 +14,5 @@ export const ARTIFACT_PINS: Readonly<Record<string, string>> = Object.freeze({
   'rtp-convergence.html':
     '5b901fbfcdebfe473aba86a0010bc573a022d121904b3fd0c8707b0399b76e62',
   'simulation-results.json':
-    '40e749a31f16f75087961d3928bf07df2da32088b823468510292a0034ff7557',
+    '9970da43be8a582c33bd0b23679e162f28a8e01d8f308eacb37b7fd0dace7145',
 });

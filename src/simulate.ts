@@ -357,13 +357,11 @@ console.log(`  Time: ${(pass2ElapsedMs / 1000).toFixed(1)}s\n`);
 // ── Write unified output ───────────────────────────────────────────────────────
 
 const output = {
-  generatedAt: new Date().toISOString(),
   pass1_fresh_seeds: {
     description: 'Auditor-generated random seeds. Validates implementation and multiplier table independent of casino data.',
     roundsPerConfig: ROUNDS_PER_CONFIG,
     totalRounds: ROUNDS_PER_CONFIG * configs.length,
     configs: configs.length,
-    executionTimeMs: pass1ElapsedMs,
     avgTheoreticalRTP: configs.reduce((a, { rows, risk }) => a + cfg.theoreticalRTP(rows, risk as RiskLevel), 0) / configs.length,
     avgSimulatedRTP: pass1AvgRTP,
     chi2FailsAtAlpha01: pass1Chi2Fails,
@@ -384,7 +382,6 @@ const output = {
     test_b_cherry_pick_flags: cherryPickFlags,
     test_b_cherry_pick_pvalue: cherryPickPValue,
     test_b_verdict: cherryPickVerdict,
-    executionTimeMs: pass2ElapsedMs,
     results: pass2Results,
   },
 };

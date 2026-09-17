@@ -1,11 +1,9 @@
 {
-  "generatedAt": "2026-06-10T12:29:13.882Z",
   "pass1_fresh_seeds": {
     "description": "Auditor-generated random seeds. Validates implementation and multiplier table independent of casino data.",
     "roundsPerConfig": 1000000,
     "totalRounds": 27000000,
     "configs": 27,
-    "executionTimeMs": 460350,
     "avgTheoreticalRTP": 0.999000000531119,
     "avgSimulatedRTP": 0.999166188296149,
     "chi2FailsAtAlpha01": 0,
@@ -18,7 +16,7 @@
         "rounds": 1000000,
         "theoreticalRTP": 0.999000001796875,
         "simulatedRTP": 0.9989357630145287,
-        "rtpDiff": -0.0000642387823462931,
+        "rtpDiff": -6.42387823462931e-05,
         "slotCounts": [
           3916,
           31287,
@@ -216,7 +214,7 @@
         "rounds": 1000000,
         "theoreticalRTP": 0.9990000021875001,
         "simulatedRTP": 0.9989983369150756,
-        "rtpDiff": -0.0000016652724245114214,
+        "rtpDiff": -1.6652724245114214e-06,
         "slotCounts": [
           1962,
           17461,
@@ -420,7 +418,7 @@
         "rounds": 1000000,
         "theoreticalRTP": 0.9989999974804687,
         "simulatedRTP": 0.9990208217707781,
-        "rtpDiff": 0.000020824290309362503,
+        "rtpDiff": 2.0824290309362503e-05,
         "slotCounts": [
           990,
           9911,
@@ -920,7 +918,7 @@
         "rounds": 1000000,
         "theoreticalRTP": 0.9990000007519532,
         "simulatedRTP": 0.9989507738620104,
-        "rtpDiff": -0.000049226889942799446,
+        "rtpDiff": -4.9226889942799446e-05,
         "slotCounts": [
           269,
           2902,
@@ -1452,7 +1450,7 @@
         "rounds": 1000000,
         "theoreticalRTP": 0.9990000004406738,
         "simulatedRTP": 0.999084666786037,
-        "rtpDiff": 0.00008466634536319351,
+        "rtpDiff": 8.466634536319351e-05,
         "slotCounts": [
           66,
           863,
@@ -2061,7 +2059,6 @@
     "test_b_cherry_pick_flags": 10,
     "test_b_cherry_pick_pvalue": 0.7730031061099987,
     "test_b_verdict": "PASS",
-    "executionTimeMs": 39854,
     "results": [
       {
         "seed_hash": "9fae5bb7897874cb71d7bd1be6dca522ddcd8f0c8f18ecaab9c5474d63b9be5a",

@@ -14,26 +14,45 @@ export function run(ctx: VerifyContext): StepResult[] {
   // ── Step 7: Payout Math (EC-11, EC-18) ───────────────────────────────────────
   {
     const failures: string[] = [];
-    const TOLERANCE = 1e-8;
+    // THE MULTIPLIER IS A LATTICE VALUE; THE PRODUCT IS NOT. Every served payout_multiplier is an
+    // exact multiple of 1e-8 — 8,100/8,100, measured 2026-09-15 — so it is checked ON that grid
+    // rather than against a tolerance. The win_amount it produces is a full-precision product with
+    // no grid, so that comparison keeps a bound, but sized to double arithmetic instead of the
+    // 1e-8 it carried: the off-grid forgery nudges a served figure by 1e-9 and passed underneath.
+    const MULT_DP = 8;
+    const offGrid = (x: number): number => Math.abs(x * 10 ** MULT_DP - Math.round(x * 10 ** MULT_DP));
+    // Slack is IEEE-754 representation error in the scaling and nothing else, sized from the
+    // magnitude of the scaled value rather than picked as a round number.
+    const onGrid  = (x: number): boolean =>
+      Number.isFinite(x) && offGrid(x) < Math.max(1e-9, Math.abs(x * 10 ** MULT_DP) * 1e-12);
+    const MONEY_REL_TOL = 1e-12;
 
+    let offGridMults = 0;
     for (const bet of bets) {
       const amount = parseFloat(bet.response.amount_currency);
       const mult = parseFloat(bet.response.payout_multiplier);
       const win = parseFloat(bet.response.win_amount);
+      if (!onGrid(mult)) {
+        offGridMults++;
+        failures.push(`bet ${bet.response.id} [phase ${bet.phase}]: payout_multiplier ${bet.response.payout_multiplier} is not on the ${MULT_DP}-dp grid (off by ${offGrid(mult).toExponential(2)})`);
+        continue;
+      }
       const expected = amount * mult;
       const diff = Math.abs(win - expected);
-      if (diff > TOLERANCE) {
+      if (!Number.isFinite(win) || diff > MONEY_REL_TOL * Math.max(Math.abs(expected), 1)) {
         failures.push(`bet ${bet.response.id} [phase ${bet.phase}]: win=${win} expected=${expected} diff=${diff.toExponential(2)}`);
       }
     }
 
     const r = failures.length === 0
       ? pass(7, 'Payout Math', ['EC-11', 'EC-18'],
-          `All ${bets.length} bets: win_amount = amount_currency × payout_multiplier (tolerance 1e-8)`,
-          { checked: bets.length, tolerance: '1e-8' })
-      : fail(7, 'Payout Math', ['EC-11', 'EC-18'], 'FLAG',
-          `${failures.length} payout mismatches`, failures.slice(0, 20),
-          { checked: bets.length, total: failures.length });
+          `All ${bets.length} bets: payout_multiplier is on the ${MULT_DP}-dp grid and win_amount = amount_currency × payout_multiplier (relative ${MONEY_REL_TOL})`,
+          { checked: bets.length, multiplierGridDp: MULT_DP, relTolerance: MONEY_REL_TOL })
+      // A PAYOUT MISMATCH IS NOT A FLAG. This branch scored 'FLAG', and a flag exits 0 — so a
+      // wrong credited amount could be published under a passing verdict. Money hard-fails.
+      : fail(7, 'Payout Math', ['EC-11', 'EC-18'], 'HARD_FAIL',
+          `${failures.length} payout mismatches (${offGridMults} off-grid multipliers)`, failures.slice(0, 20),
+          { checked: bets.length, total: failures.length, offGridMultipliers: offGridMults });
     results.push(r);
     console.log(`  [${r.pass ? 'PASS' : 'FAIL'}] Step 7 — ${r.name}`);
   }

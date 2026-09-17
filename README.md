@@ -20,7 +20,8 @@ npm install
 npm test
 ```
 
-`npm test` runs the full pipeline: unit tests + simulation + verification. Expected: all green.
+`npm test` runs: unit tests + verification. Expected: all green.
+The pinned simulation artifact is **checked, not re-run** on the default path — that is what keeps `npm test` fast and leaves the artifact of record byte-identical. Use `npm run simulate` to regenerate it from the pinned seeds; the regenerated file records fresh run metadata, so it will not match the committed hash pin byte-for-byte.
 
 Individual scripts:
 
