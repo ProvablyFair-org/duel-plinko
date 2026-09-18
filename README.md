@@ -21,7 +21,7 @@ npm test
 ```
 
 `npm test` runs: unit tests + verification. Expected: all green.
-The pinned simulation artifact is **checked, not re-run** on the default path — that is what keeps `npm test` fast and leaves the artifact of record byte-identical. Use `npm run simulate` to regenerate it from the pinned seeds; the regenerated file records fresh run metadata, so it will not match the committed hash pin byte-for-byte.
+The pinned simulation artifact is **checked, not re-run** on the default path — that is what keeps `npm test` fast and leaves the artifact of record byte-identical. `npm run simulate` regenerates it from the pinned seeds in `SIM_SEEDS`, and the artifact carries no run metadata, so a regeneration reproduces every integer, string and count exactly. What it will not reproduce is the last bit of a few floating-point p-values: regenerated on a second machine, six differ by 1–12 units in the last place and everything else is identical, all of it inside 1e-12. That is double arithmetic across CPUs, not a difference in the result, which is why the gate is the tolerance comparison in `outputs/run/diff.json` rather than a byte-for-byte hash of derived statistics.
 
 Individual scripts:
 
