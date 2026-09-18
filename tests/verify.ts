@@ -28,6 +28,7 @@ import * as phaseDStep     from './steps/phase-d';
 import * as simulation     from './steps/simulation';
 import * as statistical    from './steps/statistical';
 import * as artifacts      from './steps/artifacts';
+import { fieldDiff, beyondTolerance, maxima, DIFF_ATOL, DIFF_RTOL } from '../src/diff';
 
 // ── Setup ─────────────────────────────────────────────────────────────────────
 
@@ -193,14 +194,24 @@ const output = {
   informational: infoItems,
 };
 
+// A VERIFICATION RUN MUST NOT REWRITE THE ARTIFACT IT SCORES. Until this release this
+// statement wrote straight over the committed copy on every run, failing runs included — so a
+// run that disagreed with the committed evidence destroyed the evidence of the disagreement,
+// and the next run compared the repo against what the failing run had just written. This run
+// writes under outputs/run/; the committed copy is refreshed only by PF_EMIT=1.
+const PF_EMIT = process.env.PF_EMIT === '1';
+const RESULTS_DIR = PF_EMIT ? OUTPUTS_DIR : RUN_DIR;
+fs.mkdirSync(RESULTS_DIR, { recursive: true });
 fs.writeFileSync(
-  path.join(OUTPUTS_DIR, 'verification-results.json'),
+  path.join(RESULTS_DIR, 'verification-results.json'),
   JSON.stringify(output, null, 2)
 );
-console.log(`  Outputs written to: outputs/verification-results.json`);
+console.log(`  Outputs written to: ${PF_EMIT ? 'outputs' : 'outputs/run'}/verification-results.json`);
 
 const determinismOutput = {
-  generatedAt: new Date().toISOString(),
+  // NO `generatedAt`. This is a pinned artifact of record: a timestamp inside it means a
+  // regeneration can never reproduce the pinned bytes even when every figure is identical,
+  // which defeats the pin. Run metadata belongs to the run, and the run is outputs/run/.
   totalBets: determinismLog.length,
   verified: determinismLog.filter(e => e.match).length,
   skipped: 0,
@@ -218,7 +229,7 @@ fs.writeFileSync(
 console.log(`  Run products written to: outputs/run/determinism-log.json`);
 
 const chiSquaredOutput = {
-  generatedAt: new Date().toISOString(),
+  // NO `generatedAt` — see determinismOutput above.
   source: 'live bets (plinko-master.json)',
   alpha: 0.01,
   configsTested: chiSquaredLog.length,
@@ -232,3 +243,73 @@ fs.writeFileSync(
 );
 console.log(`  Run products written to: outputs/run/chi-squared-results.json`);
 console.log(`  Committed artifacts NOT modified.`);
+
+// ── Reproduction gate ─────────────────────────────────────────────────────────
+// README §Reproduce says the gate is this comparison. It is one now.
+//
+// THE GATE IS "BEYOND TOLERANCE", NOT "ANY FIELD". Byte identity is required of exact content
+// — the dataset and the config, both hash-guarded above. It is the wrong bar for a DERIVED
+// statistic: regenerate the p-values on other hardware and a few move by a unit in the last
+// place. Scoring that as a disagreement trains a reader to ignore the diff, which is the one
+// outcome that makes it useless. The bound is declared in src/diff.ts, far below the precision
+// of any figure this audit publishes; outside it is a DIFFERENT result, and the run exits 1.
+let reproductionFailures = 0;
+if (!PF_EMIT) {
+  const readJsonOrNull = (p: string): unknown => {
+    try { return JSON.parse(fs.readFileSync(p, 'utf8')); } catch { return null; }
+  };
+  const targets: { file: string; fresh: unknown }[] = [
+    { file: 'verification-results.json', fresh: output },
+    { file: 'determinism-log.json',      fresh: determinismOutput },
+    { file: 'chi-squared-results.json',  fresh: chiSquaredOutput },
+  ];
+  const perFile = targets.map(t => {
+    const committed = readJsonOrNull(path.join(OUTPUTS_DIR, t.file));
+    // `runAt` is a property of the run, not of the evidence, and differs by construction.
+    const diffs = fieldDiff(committed, t.fresh, ['runAt']);
+    return { file: t.file, readable: committed !== null, diffs, real: beyondTolerance(diffs) };
+  });
+  const allDiffs  = perFile.flatMap(p => p.diffs);
+  const realTotal = perFile.reduce((n, p) => n + p.real.length, 0);
+  const gap       = maxima(allDiffs);
+
+  fs.writeFileSync(path.join(RUN_DIR, 'diff.json'), JSON.stringify({
+    runtime: process.versions.node,
+    verdict,
+    tolerance: { atol: DIFF_ATOL, rtol: DIFF_RTOL, rule: '|a-b| <= atol + rtol*max(|a|,|b|); two distinct integers never agree' },
+    reproduced: realTotal === 0,
+    beyondToleranceCount: realTotal,
+    withinToleranceCount: allDiffs.length - realTotal,
+    largestGap: gap,
+    note: 'Field-level diff between the COMMITTED artifacts and THIS RUN. `runAt` is excluded '
+      + 'because it differs by construction. Entries marked `withinTolerance` are the same '
+      + 'result computed on different hardware and are recorded, not scored. Any entry NOT so '
+      + 'marked means this run disagrees with the committed evidence — investigate it; do not '
+      + 're-run until it goes away, and do not regenerate the committed artifact to make it go away.',
+    files: perFile.map(p => ({ file: `outputs/${p.file}`, committedReadable: p.readable, differences: p.diffs })),
+  }, null, 2));
+
+  console.log(`  Reproduction vs the committed artifacts on Node ${process.versions.node}: `
+    + `${realTotal === 0 ? 'REPRODUCED' : `${realTotal} field(s) BEYOND TOLERANCE`}`
+    + `${allDiffs.length - realTotal > 0 ? ` (${allDiffs.length - realTotal} within tolerance` + (gap ? `, largest ${gap.absDiff.toExponential(2)} at ${gap.path}` : '') + ')' : ''}`);
+  console.log(`  Diff written to: outputs/run/diff.json`);
+  if (realTotal > 0) {
+    console.log('  ⚠ THIS RUN DISAGREES WITH THE COMMITTED EVIDENCE:');
+    for (const p of perFile) {
+      if (!p.readable) { console.log(`      outputs/${p.file}: committed copy absent or unreadable`); continue; }
+      for (const d of p.real.slice(0, 4)) {
+        console.log(`      ${p.file} ${d.path}: committed ${JSON.stringify(d.committed)} vs this run ${JSON.stringify(d.thisRun)}`);
+      }
+    }
+  }
+  reproductionFailures = realTotal;
+} else {
+  console.log('  REPORT GENERATION (PF_EMIT=1): the committed verification-results.json was rewritten.');
+}
+
+// ── Exit contract ─────────────────────────────────────────────────────────────
+// Framework 1.0: FAIL -> 1, FLAG -> 2, otherwise 0. Until this release the file ended at the
+// verdict, so `NOT PROVABLY FAIR` returned success and anything automated read it as clean.
+// A reproduction beyond tolerance is a FAIL, not a warning: a gate that only prints is not one.
+if (hardFails.length > 0 || reproductionFailures > 0) process.exit(1);
+if (flags.length > 0) process.exit(2);

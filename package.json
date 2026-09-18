@@ -2,6 +2,9 @@
   "name": "plinko-audit",
   "version": "1.0.0",
   "description": "Provably fair audit \u2014 Duel.com Plinko",
+  "engines": {
+    "node": "22.x"
+  },
   "scripts": {
     "test": "mocha && npm run verify",
     "verify": "ts-node tests/verify.ts",

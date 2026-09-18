@@ -1,0 +1,36 @@
+{
+  "$schema": "https://provablyfair.org/framework/1.0/release-manifest.schema.json",
+  "auditId": "PF-2026-DL01",
+  "game": "plinko",
+  "casino": "duel",
+  "release": "v1.2.0",
+  "framework": "1.0",
+  "datasetSha256": "3cf9359d88220bc800bb32edfe04399f55b909302262928ee3a0582715635267",
+  "artifacts": {
+    "data/plinko-master-8100bets.json": "3cf9359d88220bc800bb32edfe04399f55b909302262928ee3a0582715635267",
+    "plinkoConfig.json": "78f0a39201a8c24fd1577143732e004f77e27d4d36efeedc6b3f7b93b2078fed",
+    "outputs/simulation-results.json": "b7744254a4d331158ab8f789581c37ecf64aeec123dcf71a651cc13859699514",
+    "outputs/chi-squared-results.json": "c6d8f718085c388d7f9ab06d2747e98b74541d39724f214866dc6767df255d84",
+    "outputs/determinism-log.json": "5d5c00c597424ea5ba692454c5998a53ec6ff21e1e314908d79553d7213859f4",
+    "outputs/rtp-convergence.html": "57a9b8a30cee238c35dc785ed51c2333bbfc4bf25e4983436f86e2dfe7d279e9",
+    "outputs/verification-results.json": "6b46d2f1f916df0104869eb2953fc680b96153ed4c15cc4097aaadae510d1ac1"
+  },
+  "verdict": "PROVABLY FAIR — Full Pass",
+  "scored": {
+    "passed": 21,
+    "flags": 0,
+    "hardFail": 0,
+    "of": 21
+  },
+  "capturedAt": {
+    "from": "2026-04-10T16:48:39.110Z",
+    "to": "2026-04-10T19:22:55.922Z"
+  },
+  "environment": {
+    "host": "duel.com",
+    "stage": "production",
+    "qualifier": null
+  },
+  "supersedes": "v1.1.1",
+  "signature": null
+}

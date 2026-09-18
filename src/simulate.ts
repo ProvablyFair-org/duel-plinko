@@ -394,161 +394,106 @@ const avgTheoreticalRTP = configs.reduce((a, { rows, risk }) => a + cfg.theoreti
 const finalPoint = convergenceData[convergenceData.length - 1];
 const finalRTP = finalPoint.meanRTP;
 
+// ── Self-contained SVG, no CDN ─────────────────────────────────────────────────
+// This artifact is pinned evidence and the README says the package performs no network
+// access. Until this release the chart pulled Chart.js from jsDelivr inside that pinned file,
+// so the evidence rendered only for a reader online at the moment they opened it, and what
+// they saw depended on a third party's CDN. The same traces are drawn as inline SVG — the
+// approach the sibling LIQD Plinko package uses — and the file now opens offline, forever.
+//
+// Two defects in the replaced markup are fixed rather than carried over: the ±1 SE traces
+// were labelled "+2 SE"/"-2 SE", and the "±" and "✓" glyphs were escaped twice and rendered
+// to readers as the literal text ± and ✓.
+
+const W = 1000, H = 470, PAD_L = 70, PAD_R = 28, PAD_T = 40, PAD_B = 58;
+const plotW = W - PAD_L - PAD_R, plotH = H - PAD_T - PAD_B;
+
+const theoPct = avgTheoreticalRTP * 100;
+const lo2 = convergenceData.map(d => d.meanRTP - 2 * d.stdDev);
+const hi2 = convergenceData.map(d => d.meanRTP + 2 * d.stdDev);
+const yMinData = Math.min(theoPct, ...lo2);
+const yMaxData = Math.max(theoPct, ...hi2);
+const yPad = (yMaxData - yMinData) * 0.12 || 0.001;
+const yMin = yMinData - yPad, yMax = yMaxData + yPad;
+const nPts = convergenceData.length;
+const xAt = (i: number) => PAD_L + (nPts <= 1 ? plotW : (i / (nPts - 1)) * plotW);
+const yAt = (v: number) => PAD_T + (1 - (v - yMin) / (yMax - yMin)) * plotH;
+const pts = (vals: number[]) => vals.map((v, i) => `${xAt(i).toFixed(1)},${yAt(v).toFixed(1)}`).join(' ');
+
+// The ±2 SE band as one closed polygon: up the upper edge, back down the lower.
+const bandPath = `${pts(hi2)} ${lo2.map((v, i) => `${xAt(nPts - 1 - i).toFixed(1)},${yAt(lo2[nPts - 1 - i]!).toFixed(1)}`).join(' ')}`;
+
+const yTicks = Array.from({ length: 5 }, (_, i) => yMin + (i / 4) * (yMax - yMin));
+const yGrid = yTicks.map(v => {
+  const y = yAt(v).toFixed(1);
+  return `<line x1="${PAD_L}" y1="${y}" x2="${PAD_L + plotW}" y2="${y}" stroke="#eee" stroke-width="1"/>`
+    + `<text x="${PAD_L - 8}" y="${(Number(y) + 4).toFixed(1)}" text-anchor="end" font-size="11" fill="#666">${v.toFixed(2)}%</text>`;
+}).join('\n    ');
+
+const roundsLabel = (n: number) => n >= 1e6 ? `${(n / 1e6).toFixed(0)}M` : `${(n / 1e3).toFixed(0)}K`;
+const xTickIdx = [...new Set([0, Math.floor((nPts - 1) / 4), Math.floor((nPts - 1) / 2), Math.floor(3 * (nPts - 1) / 4), nPts - 1])];
+const xGrid = xTickIdx.map(i => {
+  const x = xAt(i).toFixed(1);
+  return `<line x1="${x}" y1="${PAD_T}" x2="${x}" y2="${PAD_T + plotH}" stroke="#f4f4f4" stroke-width="1"/>`
+    + `<text x="${x}" y="${(PAD_T + plotH + 20).toFixed(1)}" text-anchor="middle" font-size="11" fill="#666">${roundsLabel(convergenceData[i]!.roundCount)}</text>`;
+}).join('\n    ');
+
+const meanPoints = convergenceData
+  .map((d, i) => `<circle cx="${xAt(i).toFixed(1)}" cy="${yAt(d.meanRTP).toFixed(1)}" r="2.5" fill="#1565c0"/>`)
+  .join('\n    ');
+const theoY = yAt(theoPct).toFixed(1);
+
 const chartHTML = `<!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8">
 <title>DUEL.COM PLINKO RTP CONVERGENCE — ${configs.length} CONFIGS x 1M ROUNDS EACH</title>
-<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"><\/script>
 <style>
   * { margin: 0; padding: 0; box-sizing: border-box; }
   body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #fafafa; padding: 24px; }
   .container { max-width: 1100px; margin: 0 auto; background: #fff; border-radius: 12px; border: 1px solid #e0e0e0; padding: 32px; }
-  h1 { text-align: center; font-size: 16px; font-weight: 600; color: #333; letter-spacing: 1.5px; text-transform: uppercase; margin-bottom: 24px; }
-  .chart-wrap { position: relative; height: 420px; }
+  h1 { text-align: center; font-size: 16px; font-weight: 600; color: #333; letter-spacing: 1.5px; text-transform: uppercase; margin-bottom: 8px; }
+  .sub { text-align: center; font-size: 12px; color: #777; margin-bottom: 16px; }
+  svg { display: block; width: 100%; height: auto; }
+  .legend { text-align: center; margin-top: 12px; font-size: 13px; color: #666; }
+  .legend span { margin: 0 12px; }
+  .legend .dot { display: inline-block; width: 14px; height: 3px; vertical-align: middle; margin-right: 5px; }
   .final-box { display: inline-block; border: 2px solid #4caf50; border-radius: 8px; padding: 10px 20px; margin-top: 20px; }
   .final-box .label { font-size: 13px; color: #666; }
   .final-box .value { font-size: 22px; font-weight: 700; color: #2e7d32; }
   .final-box .check { color: #4caf50; font-size: 18px; }
-  .legend { text-align: center; margin-top: 12px; font-size: 13px; color: #666; }
-  .legend span { margin: 0 12px; }
-  .legend .dot { display: inline-block; width: 12px; height: 3px; vertical-align: middle; margin-right: 4px; }
 </style>
 </head>
 <body>
 <div class="container">
-  <h1>DUEL.COM PLINKO RTP CONVERGENCE — ${configs.length} CONFIGS x 1M ROUNDS EACH</h1>
-  <div class="chart-wrap"><canvas id="chart"></canvas></div>
+  <h1>Duel.com Plinko RTP Convergence — ${configs.length} configs &times; 1M rounds each</h1>
+  <div class="sub">Running mean simulated RTP over the pooled run, with its standard error. SE = &sigma;/&radic;n, not standard deviation.</div>
+  <svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Mean simulated RTP converging on the theoretical RTP as rounds accumulate">
+    <rect x="${PAD_L}" y="${PAD_T}" width="${plotW}" height="${plotH}" fill="#fff" stroke="#ddd"/>
+    ${yGrid}
+    ${xGrid}
+    <polygon points="${bandPath}" fill="rgba(229,115,115,0.10)" stroke="none"/>
+    <polyline points="${pts(convergenceData.map(d => d.meanRTP + d.stdDev))}" fill="none" stroke="rgba(229,115,115,0.45)" stroke-width="1"/>
+    <polyline points="${pts(convergenceData.map(d => d.meanRTP - d.stdDev))}" fill="none" stroke="rgba(229,115,115,0.45)" stroke-width="1"/>
+    <line x1="${PAD_L}" y1="${theoY}" x2="${PAD_L + plotW}" y2="${theoY}" stroke="#e57373" stroke-width="2" stroke-dasharray="8 4"/>
+    <polyline points="${pts(convergenceData.map(d => d.meanRTP))}" fill="none" stroke="#1565c0" stroke-width="2.5"/>
+    ${meanPoints}
+    <text x="${(PAD_L + plotW / 2).toFixed(1)}" y="${(H - 14).toFixed(1)}" text-anchor="middle" font-size="12" fill="#444">Rounds per config</text>
+  </svg>
   <div class="legend">
-    <span><span class="dot" style="background:#1565c0;height:3px"></span> Mean RTP</span>
-    <span><span class="dot" style="background:rgba(229,115,115,0.5);height:3px"></span> \\u00b12 SE band</span>
-    <span><span class="dot" style="background:#e57373;border-top:2px dashed #e57373;height:0"></span> Theoretical (${(avgTheoreticalRTP * 100).toFixed(1)}%)</span>
+    <span><span class="dot" style="background:#1565c0"></span>Mean RTP</span>
+    <span><span class="dot" style="background:rgba(229,115,115,0.45)"></span>&plusmn;1 SE</span>
+    <span><span class="dot" style="background:rgba(229,115,115,0.25)"></span>&plusmn;2 SE band</span>
+    <span><span class="dot" style="background:#e57373"></span>Theoretical (${theoPct.toFixed(4)}%)</span>
   </div>
   <div style="text-align:right; margin-top:8px;">
     <div class="final-box">
       <span class="label">Final Mean RTP:</span>
       <span class="value">${finalRTP.toFixed(3)}%</span>
-      <span class="check">\\u2713</span>
+      <span class="check">&#10003;</span>
     </div>
   </div>
 </div>
-<script>
-const data = ${JSON.stringify(convergenceData.map(d => ({
-  x: d.roundCount,
-  y: d.meanRTP,
-  sd: d.stdDev,
-})))};
-
-const theoretical = ${(avgTheoreticalRTP * 100).toFixed(6)};
-const labels = data.map(d => {
-  const m = d.x / 1e6;
-  return m >= 1 ? m.toFixed(0) + 'M' : (d.x / 1e3).toFixed(0) + 'K';
-});
-
-const ctx = document.getElementById('chart').getContext('2d');
-new Chart(ctx, {
-  type: 'line',
-  data: {
-    labels,
-    datasets: [
-      {
-        label: 'Upper band',
-        data: data.map(d => d.y + d.sd * 2),
-        borderColor: 'transparent',
-        backgroundColor: 'rgba(229,115,115,0.08)',
-        fill: '+1',
-        pointRadius: 0,
-        tension: 0.3,
-      },
-      {
-        label: 'Lower band',
-        data: data.map(d => d.y - d.sd * 2),
-        borderColor: 'transparent',
-        backgroundColor: 'rgba(229,115,115,0.08)',
-        fill: false,
-        pointRadius: 0,
-        tension: 0.3,
-      },
-      {
-        label: '+2 SE',
-        data: data.map(d => d.y + d.sd),
-        borderColor: 'rgba(229,115,115,0.4)',
-        borderWidth: 1,
-        fill: false,
-        pointRadius: 0,
-        tension: 0.3,
-      },
-      {
-        label: '-2 SE',
-        data: data.map(d => d.y - d.sd),
-        borderColor: 'rgba(229,115,115,0.4)',
-        borderWidth: 1,
-        fill: false,
-        pointRadius: 0,
-        tension: 0.3,
-      },
-      {
-        label: 'Theoretical (' + theoretical.toFixed(1) + '%)',
-        data: data.map(() => theoretical),
-        borderColor: '#e57373',
-        borderWidth: 2,
-        borderDash: [8, 4],
-        fill: false,
-        pointRadius: 0,
-      },
-      {
-        label: 'Mean RTP',
-        data: data.map(d => d.y),
-        borderColor: '#1565c0',
-        borderWidth: 2.5,
-        fill: false,
-        pointRadius: 3,
-        pointHoverRadius: 6,
-        pointBackgroundColor: '#1565c0',
-        pointHoverBackgroundColor: '#1565c0',
-        tension: 0.3,
-      },
-      {
-        label: 'Final',
-        data: data.map((d, i) => i === data.length - 1 ? d.y : null),
-        borderColor: '#1565c0',
-        backgroundColor: '#1565c0',
-        pointRadius: 6,
-        pointHoverRadius: 8,
-        showLine: false,
-      },
-    ],
-  },
-  options: {
-    responsive: true,
-    maintainAspectRatio: false,
-    interaction: { mode: 'index', intersect: false },
-    plugins: {
-      legend: { display: false },
-      tooltip: {
-        callbacks: {
-          title: (items) => labels[items[0].dataIndex] + ' rounds/config — mean of ${configs.length} configs',
-          label: (item) => {
-            if (item.datasetIndex === 5) return 'Mean RTP: ' + item.parsed.y.toFixed(4) + '%';
-            if (item.datasetIndex === 4) return 'Theoretical: ' + theoretical.toFixed(4) + '%';
-            return null;
-          },
-        },
-      },
-    },
-    scales: {
-      x: {
-        title: { display: true, text: 'Rounds per Config', font: { size: 12 } },
-        ticks: { maxTicksLimit: 10 },
-      },
-      y: {
-        title: { display: false },
-        ticks: { callback: v => v.toFixed(1) + '%' },
-      },
-    },
-  },
-});
-<\/script>
 </body>
 </html>`;
 

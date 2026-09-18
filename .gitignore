@@ -6,11 +6,8 @@ outputs/*.json
 !outputs/chi-squared-results.json
 !outputs/determinism-log.json
 !outputs/simulation-results.json
+!outputs/verification-results.json
 !data/.gitkeep
-results/*.json
-!results/.gitkeep
-results/merged/*.json
-!results/merged/.gitkeep
 .DS_Store
 .browser-profile/
 
