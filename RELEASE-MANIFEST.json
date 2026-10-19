@@ -1,10 +1,58 @@
 {
-  "$schema": "https://provablyfair.org/framework/1.0/release-manifest.schema.json",
   "auditId": "PF-2026-DL01",
   "game": "plinko",
   "casino": "duel",
-  "release": "v1.2.0",
-  "framework": "1.0",
+  "release": "v1.3.0",
+  "framework": "1.1",
+  "simulation": {
+    "seeding": "pinned",
+    "seedSource": "src/sim-seeds.ts SIM_SEEDS",
+    "attestation": "full replay on every npm test: all 27,000,000 Pass 1 rounds regenerated from the pinned seeds, census and running RTP exact, other derived figures at the reproduction tolerance; npm run test:full also regenerates the artifact into outputs/run/ and diffs it",
+    "note": "The Pass 1 experiment is deterministic: npm run simulate re-derives outputs/simulation-results.json from the pinned SIM_SEEDS in src/sim-seeds.ts, and the run is compared against the committed artifact at the reproduction tolerance (outputs/run/diff.json). Step 19 re-derives RTP, standard error, chi-squared and its p-value from the committed histograms rather than reading the artifact's own scalars, and, since 24 September 2026, replays all 27,000,000 rounds from the pinned seeds (src/pass1.ts, the generator's own loop): the census, simulatedRTP and all 189 running-RTP points must come back exactly and the other derived figures within tolerance. No artifact of record carries run metadata, so every integer, string and count reproduces exactly; only the last bits of a few derived floats move across CPUs, which is what the tolerance is for."
+  },
+  "runtimeBudget": {
+    "command": "npm test",
+    "budget": [
+      {
+        "cores": 2,
+        "maxMinutes": 20
+      },
+      {
+        "cores": 12,
+        "maxMinutes": 6
+      }
+    ],
+    "measured": [
+      {
+        "date": "2026-09-28",
+        "machine": "Apple M2 Max",
+        "cores": 12,
+        "workerThreads": 7,
+        "node": "22.23.1",
+        "wallSeconds": 265,
+        "by": "time npm test"
+      },
+      {
+        "date": "2026-09-28",
+        "machine": "Apple M2 Max",
+        "cores": 12,
+        "workerThreads": 2,
+        "node": "22.23.1",
+        "wallSeconds": 360,
+        "by": "time env PF_PARALLEL_WORKERS=1 npm test (the thread count a 2-core machine gets)"
+      },
+      {
+        "date": "2026-09-28",
+        "machine": "reviewer (2 cores)",
+        "cores": 2,
+        "workerThreads": 2,
+        "node": null,
+        "wallSeconds": 840,
+        "by": "reported in the 2026-09-28 review (\"14 minutes on 2 cores\")"
+      }
+    ],
+    "scaling": "Step 19 replays 27,000,000 Pass 1 rounds on worker threads (~60% of reported cores, src/parallel.ts; PF_PARALLEL_WORKERS overrides)"
+  },
   "datasetSha256": "3cf9359d88220bc800bb32edfe04399f55b909302262928ee3a0582715635267",
   "artifacts": {
     "data/plinko-master-8100bets.json": "3cf9359d88220bc800bb32edfe04399f55b909302262928ee3a0582715635267",
@@ -13,14 +61,17 @@
     "outputs/chi-squared-results.json": "c6d8f718085c388d7f9ab06d2747e98b74541d39724f214866dc6767df255d84",
     "outputs/determinism-log.json": "5d5c00c597424ea5ba692454c5998a53ec6ff21e1e314908d79553d7213859f4",
     "outputs/rtp-convergence.html": "57a9b8a30cee238c35dc785ed51c2333bbfc4bf25e4983436f86e2dfe7d279e9",
-    "outputs/verification-results.json": "6b46d2f1f916df0104869eb2953fc680b96153ed4c15cc4097aaadae510d1ac1"
+    "outputs/verification-results.json": "ca34365287bc8f1ff78fed3d20254f243888a09fbd3966c617b641c27c94fa16",
+    "outputs/rtp-claim-table.json": "eca16ed27d4cb5bf9c457b48b98fe8a73d71278eeac3a7cbb66250aca08b47cf"
   },
   "verdict": "PROVABLY FAIR — Full Pass",
   "scored": {
-    "passed": 21,
-    "flags": 0,
+    "passed": 22,
+    "flags": 1,
+    "operatorFlags": 0,
+    "captureFlags": 1,
     "hardFail": 0,
-    "of": 21
+    "of": 23
   },
   "capturedAt": {
     "from": "2026-04-10T16:48:39.110Z",
@@ -31,6 +82,14 @@
     "stage": "production",
     "qualifier": null
   },
-  "supersedes": "v1.1.1",
-  "signature": null
+  "supersedes": "v1.2.0",
+  "signature": "SHA256:gEujiJm2pRyq7lQsfYQfQ1r97H/J7GdaKHbOW8GtikY",
+  "falsifiability": {
+    "registry": "tests/mutations.json",
+    "runner": "scripts/mutate.mjs",
+    "mutations": 53,
+    "killed": 53,
+    "scoredStepsCovered": "23/23",
+    "declaredSurvivors": 0
+  }
 }

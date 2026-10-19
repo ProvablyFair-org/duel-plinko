@@ -13,3 +13,4 @@ outputs/*.json
 
 # run products — this verifier writes them fresh each run; the committed artifacts are pinned
 outputs/run/
+!outputs/rtp-claim-table.json

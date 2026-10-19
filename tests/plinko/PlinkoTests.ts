@@ -1,8 +1,13 @@
 import assert from 'assert';
 import * as fs from 'fs';
 import * as path from 'path';
-import { computeSlot, computeSlotFromBuffer, verifyHash } from '../../src/rng';
+import {
+  computeSlot, computeSlotFromBuffer, verifyHash,
+  directionBit, bitExtractionBiasBound, BIT_EXTRACTION, computePathFromBuffer,
+} from '../../src/rng';
+import { poissonBinomialSurvival, slotCoincidenceProb, binomProb } from '../../src/stats';
 import { PlinkoConfig } from '../../src/config';
+import { computeRtpClaim } from '../../src/rtp-settings';
 import { loadDataset, revealedSeedMap, groupByHash } from '../../src/loader';
 import type { PlinkoConfigFile } from '../../src/types';
 
@@ -160,6 +165,110 @@ describe('Cryptographic Core — Full Dataset Verification (all bets — proves 
 
 });
 
+// ── Bit extraction ─────────────────────────────────────────────────────────────
+
+describe('Bit Extraction — the direction draw is exact, and the bound saying so is computed (PLINKO-08)', () => {
+
+  it('the declared extraction reads a uint32 window: 8 hex characters, domain 2^32', () => {
+    const b = bitExtractionBiasBound();
+    assert.strictEqual(BIT_EXTRACTION.hexChars, 8);
+    assert.strictEqual(BIT_EXTRACTION.modulus, 2);
+    assert.strictEqual(b.domainSize, 2 ** 32);
+  });
+
+  it('the domain divides by the modulus, so the worst-case modulo bias is exactly zero', () => {
+    const b = bitExtractionBiasBound();
+    assert.strictEqual(b.remainder, 0, 'an even domain must leave no remainder');
+    assert.strictEqual(b.minResidueCount, b.maxResidueCount,
+      'both residues must be reachable by the same number of digests');
+    assert.strictEqual(b.bias, 0, `worst-case modulo bias must be exactly 0, got ${b.bias}`);
+  });
+
+  it('the computed bias is inside the 2^-32 ceiling the methodology sets, with no rejection sampling', () => {
+    const b = bitExtractionBiasBound();
+    assert.ok(b.bias <= Math.pow(2, -32), `bias ${b.bias} exceeds 2^-32`);
+    assert.strictEqual(b.rejectionSampling, false);
+    assert.strictEqual(b.rejectedDraws, 0, 'no draw is discarded, so the rejection census is zero by construction');
+  });
+
+  it('an exhaustive census of a 2^20 sub-domain splits exactly in half (no residue is favoured)', () => {
+    // Not a sample: every value in [0, 2^20) is passed through the real extraction. An odd
+    // domain, or a window that read a different number of characters, could not come out even.
+    const N = 1 << 20;
+    let ones = 0;
+    for (let v = 0; v < N; v++) ones += directionBit(v.toString(16).padStart(8, '0'));
+    assert.strictEqual(ones, N / 2, `${ones} of ${N} digests sent the ball right; an exact draw sends ${N / 2}`);
+  });
+
+  it('a hypothetical odd domain would be REJECTED by the same bound (the check can fail)', () => {
+    // Guards the guard: if every arrangement of the arithmetic returned a passing number, the
+    // bound above would be decoration. 5 values over 2 residues gives counts 3 and 2.
+    const domainSize = 5, modulus = 2;
+    const maxCount = Math.ceil(domainSize / modulus);
+    const minCount = Math.floor(domainSize / modulus);
+    const bias = Math.max(maxCount / domainSize - 1 / modulus, 1 / modulus - minCount / domainSize);
+    assert.ok(bias > Math.pow(2, -32), 'an odd domain must produce a bias above the ceiling');
+  });
+
+  it('the path and the slot come from the same draws: the slot is the path\'s popcount', () => {
+    for (const v of VECTORS) {
+      const key = Buffer.from(v.serverSeed, 'hex');
+      const { slot, path } = computePathFromBuffer(key, v.clientSeed, v.nonce, v.rows);
+      let popcount = 0;
+      for (let bit = 0; bit < v.rows; bit++) popcount += (path >> bit) & 1;
+      assert.strictEqual(slot, popcount, `path and slot disagree for rows=${v.rows}`);
+      assert.strictEqual(slot, computeSlot(v.serverSeed, v.clientSeed, v.nonce, v.rows));
+    }
+  });
+
+});
+
+// ── Coincidence nulls ──────────────────────────────────────────────────────────
+
+describe('Coincidence Nulls — the rates Step 6 scores against are the ones the board predicts (PLINKO-36)', () => {
+
+  it('two independent drops share a slot with probability C(2n,n)/4^n — matching the sum over P(k)^2', () => {
+    for (let rows = 8; rows <= 16; rows++) {
+      let byDefinition = 0;
+      for (let k = 0; k <= rows; k++) byDefinition += binomProb(rows, k) ** 2;
+      assert.ok(Math.abs(slotCoincidenceProb(rows) - byDefinition) < 1e-12,
+        `${rows} rows: closed form ${slotCoincidenceProb(rows)} vs Σ P(k)² ${byDefinition}`);
+    }
+  });
+
+  it('the slot null is orders of magnitude larger than the path null — which is why the two must not be swapped', () => {
+    for (let rows = 8; rows <= 16; rows++) {
+      assert.ok(slotCoincidenceProb(rows) > 40 * Math.pow(2, -rows),
+        `${rows} rows: slot coincidence must dwarf the same-path rate`);
+    }
+  });
+
+  it('Poisson-binomial survival reduces to the binomial when every probability is equal', () => {
+    const n = 40, p = 0.1;
+    const ps = new Array(n).fill(p);
+    for (const k of [1, 3, 5, 8]) {
+      let below = 0;
+      for (let j = 0; j < k; j++) {
+        let c = 1;
+        for (let i = 0; i < j; i++) c = (c * (n - i)) / (i + 1);
+        below += c * Math.pow(p, j) * Math.pow(1 - p, n - j);
+      }
+      assert.ok(Math.abs(poissonBinomialSurvival(ps, k) - (1 - below)) < 1e-12,
+        `survival at k=${k} disagrees with the binomial`);
+    }
+  });
+
+  it('survival is 1 at k=0 and falls away as the count rises', () => {
+    const ps = [0.5, 0.25, 0.125, 0.0625];
+    assert.strictEqual(poissonBinomialSurvival(ps, 0), 1);
+    for (let k = 1; k < ps.length; k++) {
+      assert.ok(poissonBinomialSurvival(ps, k) < poissonBinomialSurvival(ps, k - 1),
+        `survival must be strictly decreasing in k (k=${k})`);
+    }
+  });
+
+});
+
 // ── Configuration Integrity ────────────────────────────────────────────────────
 
 describe('Configuration Integrity — validates the casino multiplier tables loaded from plinkoConfig.json', () => {
@@ -204,11 +313,20 @@ describe('Configuration Integrity — validates the casino multiplier tables loa
     }
   });
 
-  it('theoretical RTP is within ±0.1% of the stated 99.9% for all 27 configs (confirms 0.1% house edge)', () => {
+  // C3 (FIXPASS2, 14 Oct 2026): this test used to hold every config to the stated 99.9 % (±0.1 %), so
+  // a board paying light failed npm test before the verifier's RTP-CLAIM rule could call it RTP FIGURE
+  // OVERSTATED (exit 5). It now checks the float derivation against the RTP table's exact row; whether
+  // a row meets the claim is the rule's, scored on Step 19.
+  it('theoretical RTP of all 27 configs equals the RTP table\'s exact row (src/rtp-settings.ts) within 1e-12', () => {
+    const rowsBySetting = new Map(computeRtpClaim().rows.map(r => [r.setting, r.rtpExact]));
     for (const { rows, risk } of cfg.allConfigs()) {
       const rtp = cfg.theoreticalRTP(rows, risk);
-      assert.ok(Math.abs(rtp - 0.999) < 0.001,
-        `RTP deviates from 99.9% by more than 0.1%: ${rows}r/${risk} = ${(rtp * 100).toFixed(6)}%`);
+      const exact = rowsBySetting.get(`rows=${rows} risk=${risk}`);
+      assert.ok(exact !== undefined, `no RTP table row for ${rows}r/${risk}`);
+      const [n, d] = (exact as string).split('/').map(BigInt);
+      const row = Number((n * 10n ** 18n) / d) / 1e18;
+      assert.ok(Math.abs(rtp - row) < 1e-12,
+        `${rows}r/${risk}: float derivation ${rtp} vs the table's exact row ${row}`);
     }
   });
 
@@ -232,4 +350,49 @@ describe('Payout Accuracy — confirms the platform paid the correct amount for 
     }
   });
 
+});
+
+// ── The operator's own Verify-tab code (profile PLINKO-09) ────────────────────
+
+describe('Operator source — Duel\'s own Plinko Verify-tab code, executed unmodified (evidence/verify-tab, copied 2026-09-25)', () => {
+  // duel.com → Provably Fair → Verify (Plinko) → Expand → Copy, saved verbatim (src/operator-verifier.ts)
+  const { runOperatorVerifier, checkOperatorCites, pathFromPrefixes, OPERATOR_VERIFIER_PINS, OPERATOR_VERIFIER_FILE, OPERATOR_EXPECTED_LOGS } =
+    require('../../src/operator-verifier') as typeof import('../../src/operator-verifier');
+  const { computePathFromBuffer: pathOf } = require('../../src/rng') as typeof import('../../src/rng');
+  const known = VECTORS.map((v, i) => ({ id: `known${i}`, serverSeed: v.serverSeed, clientSeed: v.clientSeed, nonce: v.nonce, rows: v.rows }));
+  const captured = rawDataset.bets.map(b => ({ id: `bet${b.response.id}`,
+    serverSeed: revMap.get(b.response.server_seed_hashed)?.seed.serverSeed ?? '', clientSeed: b.response.client_seed,
+    nonce: b.response.nonce, rows: b.request.rows }));
+  const run = runOperatorVerifier([...known, ...captured]);
+
+  it('the vendored operator file and its runner hash to their pins, the code ran, and it printed only its empty-input message', () => {
+    assert.deepStrictEqual(run.files.map(f => f.match), [true, true]);
+    assert.strictEqual(run.files[0].file, OPERATOR_VERIFIER_FILE);
+    assert.strictEqual(run.files[0].actual, OPERATOR_VERIFIER_PINS[OPERATOR_VERIFIER_FILE]);
+    assert.strictEqual(run.error, null);
+    assert.deepStrictEqual(run.logs, [...OPERATOR_EXPECTED_LOGS]);
+  });
+
+  it('every operator line src/rng.ts cites carries the quoted text verbatim', () => {
+    const c = checkOperatorCites();
+    assert.deepStrictEqual(c.bad, []);
+    assert.ok(c.checked > 0);
+  });
+
+  it('fixed vectors: the operator code returns the 7 known-answer slots above', () => {
+    VECTORS.forEach((v, i) => {
+      assert.strictEqual(run.results!.get(`known${i}`)!.slot, v.expectedSlot, `${v.rows}r/${v.risk}`);
+    });
+  });
+
+  it('every captured bet: the operator bucket equals the served final_slot and src/rng.ts, and its L/R path equals src/rng.ts\'s', () => {
+    const bad: string[] = [];
+    rawDataset.bets.forEach((b, i) => {
+      const o = run.results!.get(`bet${b.response.id}`);
+      const ref = pathOf(Buffer.from(captured[i].serverSeed, 'hex'), b.response.client_seed, b.response.nonce, b.request.rows);
+      if (!o || o.slot !== b.response.final_slot || o.slot !== ref.slot || pathFromPrefixes(o.prefixes) !== ref.path) bad.push(String(b.response.id));
+    });
+    assert.deepStrictEqual(bad.slice(0, 5), []);
+    assert.strictEqual(rawDataset.bets.length, 8100);
+  });
 });

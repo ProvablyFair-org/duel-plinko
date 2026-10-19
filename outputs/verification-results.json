@@ -1,5 +1,4 @@
 {
-  "runAt": "2026-09-18T11:05:28.904Z",
   "dataset": {
     "bets": 8100,
     "seeds": 166,
@@ -24,9 +23,12 @@
   },
   "verdict": "PROVABLY FAIR — Full Pass",
   "summary": {
-    "passed": 21,
-    "hardFails": 0,
-    "flags": 0
+    "passed": 22,
+    "flags": 1,
+    "operatorFlags": 0,
+    "captureFlags": 1,
+    "hardFail": 0,
+    "verdict": "PROVABLY FAIR — Full Pass"
   },
   "steps": [
     {
@@ -37,12 +39,44 @@
       ],
       "severity": "PASS",
       "pass": true,
-      "summary": "162 revealed seeds verified. 3 phase-boundary entries skipped (end-of-phase rotation reveals previous phase seed).",
+      "summary": "162/162 commitments verified against the population declared in src/loader.ts, and exactly 3 declared phase-boundary exemptions taken (A→B, B→C, C→D — the end-of-phase rotation reveals the seed the phase ended on, not the one the next begins with)",
       "failures": [],
       "details": {
         "checked": 162,
-        "phaseBoundarySkips": 3
-      }
+        "expectedChecked": 162,
+        "seedRecords": 166,
+        "expectedSeedRecords": 166,
+        "unrevealed": 0,
+        "phaseBoundarySkips": 3,
+        "expectedPhaseBoundarySkips": 3,
+        "phaseBoundaries": [
+          {
+            "index": 109,
+            "from": "A",
+            "to": "B"
+          },
+          {
+            "index": 150,
+            "from": "B",
+            "to": "C"
+          },
+          {
+            "index": 155,
+            "from": "C",
+            "to": "D"
+          }
+        ],
+        "failed": 0
+      },
+      "profileIds": [
+        "PLINKO-01"
+      ],
+      "profileChecks": [
+        {
+          "id": "PLINKO-01",
+          "coverage": "full"
+        }
+      ]
     },
     {
       "step": 2,
@@ -52,12 +86,31 @@
       ],
       "severity": "PASS",
       "pass": true,
-      "summary": "166/166 rotation transitions independently recomputed (previousNextHash === newActiveHash; cross-checked against seed-level nextServerSeedHash chain) — next-seed pre-commitment chain intact",
+      "summary": "166/166 rotation transitions independently recomputed (previousNextHash === newActiveHash; cross-checked against the seed-level nextServerSeedHash chain), and the chain is anchored before epoch 0 by the pre-capture next-seed hash, whose plaintext epoch 0 later reveals. Evidence begins at that reading and the step claims nothing earlier.",
       "failures": [],
       "details": {
         "checked": 166,
-        "recomputedMatches": 166
-      }
+        "expectedChecked": 166,
+        "recomputedMatches": 166,
+        "failed": 0,
+        "anchor": {
+          "source": "GET /api/v2/client-seed before the first rotation (capture/capture-auto.reference.js doRotation, meta.lastNextHash)",
+          "preCaptureNextHash": "9fae5bb7897874cb71d7bd1be6dca522ddcd8f0c8f18ecaab9c5474d63b9be5a",
+          "epoch0ActiveHash": "9fae5bb7897874cb71d7bd1be6dca522ddcd8f0c8f18ecaab9c5474d63b9be5a",
+          "epoch0PlaintextRevealed": true,
+          "bound": true
+        },
+        "evidenceBoundary": "the chain is anchored at the pre-capture next-seed hash read before the first rotation; no commitment the account held before that reading is in evidence"
+      },
+      "profileIds": [
+        "PLINKO-02"
+      ],
+      "profileChecks": [
+        {
+          "id": "PLINKO-02",
+          "coverage": "full"
+        }
+      ]
     },
     {
       "step": 3,
@@ -67,11 +120,21 @@
       ],
       "severity": "PASS",
       "pass": true,
-      "summary": "All 162 epochs: server_seed_hashed identical across all bets in each epoch",
+      "summary": "All 162 epochs, delimited by the nonce returning to 0 in capture order rather than by the hash being tested: server_seed_hashed identical across every bet of each epoch, and 162 epochs to 162 distinct commitments",
       "failures": [],
       "details": {
-        "epochs": 162
-      }
+        "epochs": 162,
+        "distinctCommitments": 162
+      },
+      "profileIds": [
+        "PLINKO-03"
+      ],
+      "profileChecks": [
+        {
+          "id": "PLINKO-03",
+          "coverage": "full"
+        }
+      ]
     },
     {
       "step": 4,
@@ -82,10 +145,13 @@
         "EC-4",
         "EC-5"
       ],
-      "severity": "PASS",
-      "pass": true,
-      "summary": "162 epochs: nonces sequential. 2 capture-retry epochs: 2 reconstructed from revealed seed (no captured server response available for comparison), 0 unverifiable.",
-      "failures": [],
+      "severity": "FLAG",
+      "pass": false,
+      "summary": "162 epochs: nonces sequential. 2 capture-retry epoch(s): the live capture missed a nonce and each was reconstructed from a revealed server seed whose SHA-256 matches the pre-bet commitment. The commit-reveal chain determines the outcome, but the auditor did not witness it in the capture, so this is disclosed as a capture-origin FLAG (limitation L2 in MANIFEST.md), not a PASS. Capture-origin: verdict-neutral — the verdict stays Full Pass. 0 unverifiable.",
+      "failures": [
+        "Epoch 6a4a4aff75cfdf36: capture-retry — nonce 20 missed live; reconstructed from the revealed server seed, which hashes to the pre-bet commitment (computed slot=8); the capture did not witness this outcome",
+        "Epoch 6f70b8229ebcd1c1: capture-retry — nonce 32 missed live; reconstructed from the revealed server seed, which hashes to the pre-bet commitment (computed slot=8); the capture did not witness this outcome"
+      ],
       "details": {
         "epochsChecked": 162,
         "captureArtifacts": 2,
@@ -103,39 +169,263 @@
             "computedSlot": 8
           }
         ]
-      }
+      },
+      "origin": "capture",
+      "profileIds": [
+        "PLINKO-03",
+        "PLINKO-04"
+      ],
+      "profileChecks": [
+        {
+          "id": "PLINKO-03",
+          "coverage": "full"
+        },
+        {
+          "id": "PLINKO-04",
+          "coverage": "full",
+          "note": "a nonce the capture missed to an auditor-side retry is reconstructed from the revealed server seed whose SHA-256 matches the pre-bet commitment; the commit-reveal chain determines the outcome, but because the auditor did not witness it in the capture the step raises a capture-origin FLAG, not a PASS (disclosed as L2 in MANIFEST.md). A capture-origin FLAG is verdict-neutral: the verdict stays Full Pass. A gap that cannot be reconstructed this way — no revealed seed, or a seed that does not hash to the commitment — is a verdict-affecting FLAG. Rule adopted 2026-09-22 (Fable QA): a reconstructed nonce is not graded as a PASS, and it is not held against the verdict either"
+        }
+      ]
     },
     {
       "step": 5,
-      "name": "Slot Recomputation (RNG determinism)",
+      "name": "Slot Recomputation & Bit-Extraction Bound",
       "ecRefs": [
         "EC-6",
         "EC-7"
       ],
       "severity": "PASS",
       "pass": true,
-      "summary": "All 8100 bets with revealed seeds: HMAC-SHA256 recompute matches final_slot. Outcome reproduces exactly from (server seed, client seed, nonce) — no external entropy.",
+      "summary": "All 8100/8100 bets recomputed, 0 skipped: HMAC-SHA256 recompute matches final_slot. Outcome reproduces exactly from (server seed, client seed, nonce) — no external entropy. The direction extraction reads 8 hex characters and takes the result modulo 2; the domain divides exactly, so the worst-case modulo bias is computed rather than estimated and is reported in details against the profile's 2^-32 ceiling. No draw is rejected. Player-verifier parity (PLINKO-24): the pinned ProvablyFair.org docusaurus derive.js and the pinned live /verify-bets bundle were each executed on all 8100/8100 bets — slot and L/R path equal src/rng.ts on every bet, the live page's commitment hash and display-rounded multiplier agree with the capture on every bet; the docusaurus multiplier differs from the served one on exactly the declared 224 bets (its table is payout_tables, Duel pays scaling_edge[0]; largest gap 1.10e-7; L5). Operator-code parity (PLINKO-09): Duel's own Plinko Verify-tab code (evidence/verify-tab/duel-verify-tab-plinko-2026-09-25.js, copied 2026-09-25, SHA-256-pinned) executed unmodified on 8100/8100 bets — its bucket equals the served final_slot and src/rng.ts on every bet, and the L/R path read from its own prefix sums equals src/rng.ts's (0 disagreements); operator lines cited by src/rng.ts 8/8 verbatim.",
       "failures": [],
       "details": {
         "checked": 8100,
-        "skipped": 0
-      }
+        "skipped": 0,
+        "expected": 8100,
+        "totalMismatches": 0,
+        "bitExtraction": {
+          "hexChars": 8,
+          "modulus": 2,
+          "domainSize": 4294967296,
+          "remainder": 0,
+          "minResidueCount": 2147483648,
+          "maxResidueCount": 2147483648,
+          "bias": 0,
+          "exact": true,
+          "rejectionSampling": false,
+          "rejectedDraws": 0,
+          "ceiling": 2.3283064365386963e-10,
+          "withinCeiling": true
+        },
+        "siteVerifierParity": {
+          "docusaurus": {
+            "files": [
+              {
+                "file": "games/plinko/derive.js",
+                "pinned": "dd8417482d2e18fef35894c7ac16e17a61a9eb4166817e3d8533d2160d9b754e",
+                "actual": "dd8417482d2e18fef35894c7ac16e17a61a9eb4166817e3d8533d2160d9b754e",
+                "match": true
+              },
+              {
+                "file": "games/plinko/paytables.js",
+                "pinned": "7158d02dab13b632507b5c6e4149d5c01ad864a2f15a3e7bbe9d6d08a720a704",
+                "actual": "7158d02dab13b632507b5c6e4149d5c01ad864a2f15a3e7bbe9d6d08a720a704",
+                "match": true
+              },
+              {
+                "file": "games/plinko/scalingEdge.js",
+                "pinned": "6b833ed47c215aab1a5c499dcb22bf1dc31cfbc1d5b5dc17b53d41d7c4b6ef31",
+                "actual": "6b833ed47c215aab1a5c499dcb22bf1dc31cfbc1d5b5dc17b53d41d7c4b6ef31",
+                "match": true
+              },
+              {
+                "file": "lib/hmac-sha256.js",
+                "pinned": "bc30bfe9ef202905ece93de33440d41851abf16e910f90c2a567774a2b79d889",
+                "actual": "bc30bfe9ef202905ece93de33440d41851abf16e910f90c2a567774a2b79d889",
+                "match": true
+              }
+            ],
+            "provenance": {
+              "siteRoot": "qa-workspace/duel/docusaurus/src/components/VerifyBets",
+              "repository": "mikepforg/pf-audit-duel",
+              "ref": "origin/main",
+              "head": "bd4d59cd9a3e75146f2575c5218a3fb9a8b2692d",
+              "headDate": "2026-09-19",
+              "readVia": "git cat-file -p origin/main:<path>",
+              "readOn": "2026-09-25",
+              "previouslyPinnedFrom": "repotree-sync @ 2ad89bc774c4817abfe8ed0422af7b3e03e7c477 (read 2026-09-24)"
+            },
+            "error": null,
+            "betsExecuted": 8100,
+            "slotOrPathMismatches": 0,
+            "multiplierDivergence": {
+              "measuredBets": 224,
+              "measuredCells": 53,
+              "measuredMaxAbsDelta": 1.1000000199601345e-7,
+              "outsideDeclaration": 0,
+              "declared": {
+                "siteTable": "payout_tables",
+                "servedTable": "scaling_edge[0].multipliers",
+                "betsAffected": 224,
+                "cellsHit": 53,
+                "maxAbsDelta": 1.1000000199601345e-7
+              }
+            },
+            "bracketIndex": 0
+          },
+          "liveSite": {
+            "files": [
+              {
+                "file": "chunks/turbopack-828b80f561e7c968.js",
+                "pinned": "6e8629f444df945f8fecfdfe05e24f4fa6c63b6b1ecc8f39fc45e9c4f4ecc903",
+                "actual": "6e8629f444df945f8fecfdfe05e24f4fa6c63b6b1ecc8f39fc45e9c4f4ecc903",
+                "match": true
+              },
+              {
+                "file": "chunks/34934e0e762aa37e.js",
+                "pinned": "9fb319dec0d79f9bf5851ec8e0052b6b2125e603be03d12b78a0fe99eed817d1",
+                "actual": "9fb319dec0d79f9bf5851ec8e0052b6b2125e603be03d12b78a0fe99eed817d1",
+                "match": true
+              },
+              {
+                "file": "chunks/4f34301b2f166201.js",
+                "pinned": "8111e3f3e9a137888558f69547a19b0238d1c50a339b4c51095f9481785df0f5",
+                "actual": "8111e3f3e9a137888558f69547a19b0238d1c50a339b4c51095f9481785df0f5",
+                "match": true
+              },
+              {
+                "file": "run-live-verifier.cjs",
+                "pinned": "c5d148d0a4b88231883da70d41d97a0bd9ea3dbaf2e60aefd104859ee678ffe1",
+                "actual": "c5d148d0a4b88231883da70d41d97a0bd9ea3dbaf2e60aefd104859ee678ffe1",
+                "match": true
+              }
+            ],
+            "provenance": {
+              "page": "https://www.provablyfair.org/verify-bets",
+              "chunkBase": "https://www.provablyfair.org/_next/static/chunks/",
+              "fetchedOn": "2026-09-24",
+              "deploymentId": "dpl_CxkerpJA9YjmxnP8qfA4d2jqFdti",
+              "pageModule": 7721
+            },
+            "error": null,
+            "standIns": [
+              4648,
+              7145,
+              7284,
+              9165,
+              10980,
+              13536,
+              14224,
+              19455,
+              23655,
+              27695,
+              29287,
+              29898,
+              37074,
+              39959,
+              40207,
+              50731,
+              51572,
+              53068,
+              56346,
+              64485,
+              73710,
+              73772,
+              73968,
+              74399,
+              75157,
+              83848,
+              84190,
+              85859,
+              88296,
+              88317,
+              89878,
+              91967,
+              93479,
+              99390
+            ],
+            "betsPrinted": 8100,
+            "mismatches": 0,
+            "compared": "slot (both printed forms), bucket count, L/R path, serverSeedHash, multiplier at the printed precision"
+          }
+        },
+        "operatorVerifier": {
+          "files": [
+            {
+              "file": "evidence/verify-tab/duel-verify-tab-plinko-2026-09-25.js",
+              "pinned": "8b3366d1e91edb572cac288e0a853d2b560b2cf5c4468c6848439f957465c9ce",
+              "actual": "8b3366d1e91edb572cac288e0a853d2b560b2cf5c4468c6848439f957465c9ce",
+              "match": true
+            },
+            {
+              "file": "verifier-parity/operator/run-operator-verifier.cjs",
+              "pinned": "b65902a791e1acf0b954c3b924cf02ed093d67714a409c5b83c5ba9a64fe94b2",
+              "actual": "b65902a791e1acf0b954c3b924cf02ed093d67714a409c5b83c5ba9a64fe94b2",
+              "match": true
+            }
+          ],
+          "provenance": {
+            "copiedBy": "Paulo",
+            "copiedOn": "2026-09-25",
+            "from": "duel.com → Provably Fair → Verify, game Plinko, Expand → Copy on the code panel (evidence/S10 shows the same panel expanded)",
+            "savedAs": "evidence/verify-tab/duel-verify-tab-plinko-2026-09-25.js",
+            "sha256": "8b3366d1e91edb572cac288e0a853d2b560b2cf5c4468c6848439f957465c9ce",
+            "bytes": 2511,
+            "lines": 74
+          },
+          "error": null,
+          "betsExecuted": 8100,
+          "bucketVsServed": 0,
+          "bucketVsRng": 0,
+          "pathVsRng": 0,
+          "citesChecked": 8,
+          "citesBad": 0,
+          "compared": "validatePlinkoResult bucket vs served final_slot and src/rng.ts; L/R path from its own prefix sums vs src/rng.ts"
+        }
+      },
+      "profileIds": [
+        "PLINKO-07",
+        "PLINKO-08"
+      ],
+      "profileChecks": [
+        {
+          "id": "PLINKO-07",
+          "coverage": "full"
+        },
+        {
+          "id": "PLINKO-08",
+          "coverage": "full"
+        }
+      ]
     },
     {
       "step": 6,
-      "name": "Client Seed Influence",
+      "name": "Client Seed Influence (exact null)",
       "ecRefs": [
         "EC-27"
       ],
       "severity": "PASS",
       "pass": true,
-      "summary": "Wrong client seed changed 6819/8100 slots (84.2%) across 162 epochs",
+      "summary": "Re-dropping all 8100 bets under a wrong client seed on the same server seed and nonce: the ordered path coincided 10 time(s) and the landing slot 1281 time(s), each scored against the exact Poisson-binomial null of its own board rather than against a round-number rate, at alpha 0.001. Expectations, survivals and the wrong seed used are in details. No epoch was unchanged.",
       "failures": [],
       "details": {
         "epochsTested": 162,
         "totalChecked": 8100,
         "totalChanged": 6819,
-        "pctChanged": "84.2%",
+        "alpha": 0.001,
+        "samePath": {
+          "observed": 10,
+          "expectedUnderNull": 5.155426025390625,
+          "survival": 0.03761739408818632,
+          "null": "per-bet 2^-rows of the bet's own board, aggregated by exact Poisson-binomial survival"
+        },
+        "sameSlot": {
+          "observed": 1281,
+          "expectedUnderNull": 1275.863644295372,
+          "survival": 0.4423558538525515,
+          "null": "per-bet C(2·rows,rows)/4^rows of the bet's own board, aggregated by exact Poisson-binomial survival"
+        },
+        "wrongClientSeed": "WRONG_CLIENT_SEED_FOR_AUDIT_TEST",
         "epochResults": [
           {
             "hash": "9fae5bb7897874cb71d7...",
@@ -948,7 +1238,21 @@
             "total": 50
           }
         ]
-      }
+      },
+      "profileIds": [
+        "PLINKO-06",
+        "PLINKO-36"
+      ],
+      "profileChecks": [
+        {
+          "id": "PLINKO-06",
+          "coverage": "full"
+        },
+        {
+          "id": "PLINKO-36",
+          "coverage": "full"
+        }
+      ]
     },
     {
       "step": 7,
@@ -965,7 +1269,21 @@
         "checked": 8100,
         "multiplierGridDp": 8,
         "relTolerance": 1e-12
-      }
+      },
+      "profileIds": [
+        "PLINKO-10",
+        "PLINKO-11"
+      ],
+      "profileChecks": [
+        {
+          "id": "PLINKO-10",
+          "coverage": "full"
+        },
+        {
+          "id": "PLINKO-11",
+          "coverage": "full"
+        }
+      ]
     },
     {
       "step": 8,
@@ -976,7 +1294,7 @@
       ],
       "severity": "PASS",
       "pass": true,
-      "summary": "Given the committed plinkoConfig.json multiplier table, independently-derived binomial probabilities P(slot)=C(rows,k)/2^rows produce 99.9000% RTP (analytic identity over the full table). Live play verifies the observed payout entries (263/351); unobserved rare-slot entries are evaluated from the committed table. 8100/8100 bets match scaling_edge[0].multipliers.",
+      "summary": "Every one of 8100 final_slot values lies in [0, rows] for its own board. Given the committed plinkoConfig.json multiplier table, independently-derived binomial probabilities P(slot)=C(rows,k)/2^rows produce 99.9000% RTP (analytic identity over the full table). Live play verifies the observed payout entries (263/351); unobserved rare-slot entries are evaluated from the committed table. 8100/8100 bets match scaling_edge[0].multipliers.",
       "failures": [],
       "details": {
         "total": 8100,
@@ -986,6 +1304,7 @@
         "seOnlyMatches": 0,
         "neitherMatches": 0,
         "referenceTable": "scaling_edge[0].multipliers",
+        "slotsOutOfRange": 0,
         "configLoadTimestamp": "plinkoConfig.json loaded separately — predates capture",
         "theoreticalRTPs": {
           "8r/low": 0.999000001796875,
@@ -1019,7 +1338,21 @@
         "avgTheoreticalRTP": 0.999000000531119,
         "observedTableEntries": 263,
         "totalTableEntries": 351
-      }
+      },
+      "profileIds": [
+        "PLINKO-10",
+        "PLINKO-13"
+      ],
+      "profileChecks": [
+        {
+          "id": "PLINKO-10",
+          "coverage": "full"
+        },
+        {
+          "id": "PLINKO-13",
+          "coverage": "full"
+        }
+      ]
     },
     {
       "step": 9,
@@ -1031,13 +1364,25 @@
       ],
       "severity": "PASS",
       "pass": true,
-      "summary": "Phase C: 200/200 slots recomputed correctly at $10, all multipliers match Phase B table. Equivalence proven deterministically.",
+      "summary": "Phase C: 200/200 slots recomputed correctly at $10 on 16r/high, which is the Phase B board (16r/high) — bet size is the only variable that moved; all multipliers match the same table. Equivalence proven deterministically.",
       "failures": [],
       "details": {
         "phaseCSlotRecomputed": 200,
         "phaseCSlotSkipped": 0,
-        "evidence": "Phase C equivalence is proven deterministically: slots recomputed correctly at $10 using the same HMAC-SHA256 path, and all multipliers match the same scaling_edge[0] table as Phase B. No distributional test is used — sample size (n=200) is too small for meaningful statistical comparison."
-      }
+        "phaseBBoard": "16r/high",
+        "phaseCBoard": "16r/high",
+        "sameBoard": true,
+        "evidence": "Phase C equivalence is proven deterministically: slots recomputed correctly at $10 using the same HMAC-SHA256 path on the same board as Phase B, and all multipliers match the same scaling_edge[0] table. No distributional test is used — sample size (n=200) is too small for meaningful statistical comparison."
+      },
+      "profileIds": [
+        "PLINKO-12"
+      ],
+      "profileChecks": [
+        {
+          "id": "PLINKO-12",
+          "coverage": "full"
+        }
+      ]
     },
     {
       "step": 10,
@@ -1047,30 +1392,46 @@
       ],
       "severity": "PASS",
       "pass": true,
-      "summary": "All effective_edge groups (0.1, 0) use the same multiplier table",
+      "summary": "All effective_edge groups (0.1, 0) recompute against the same committed multiplier table; each group's derived table RTP ≈ 99.9000% and the groups share one table — on the captured stakes ($0.01 and $10, bracket 0) the effective_edge label does not change the RTP",
       "failures": [],
       "details": {
         "edgeGroups": {
           "edge_0.1": {
             "count": 7563,
-            "multiplierMismatches": 0
+            "multiplierMismatches": 0,
+            "configsPresent": 27,
+            "derivedTableRTP": 0.9990000005311189,
+            "table": "scaling_edge bracket 0 (== payout_tables)"
           },
           "edge_0": {
             "count": 537,
-            "multiplierMismatches": 0
+            "multiplierMismatches": 0,
+            "configsPresent": 27,
+            "derivedTableRTP": 0.9990000005311189,
+            "table": "scaling_edge bracket 0 (== payout_tables)"
           }
         }
-      }
+      },
+      "profileIds": [
+        "PLINKO-17"
+      ],
+      "profileChecks": [
+        {
+          "id": "PLINKO-17",
+          "coverage": "full",
+          "note": "zero_edge half — every effective_edge group is recomputed against the committed table and its table RTP is derived; measured on the captured stakes ($0.01 and $10), both groups (edge 0 and 0.1) resolve to the same bracket-0 multipliers, so there the effective_edge=0 label selects no distinct-RTP table and a separate zero-edge mode is declared n/a in step 16"
+        }
+      ]
     },
     {
       "step": 11,
-      "name": "Config Completeness",
+      "name": "Config Completeness & Cell Coverage",
       "ecRefs": [
         "EC-30"
       ],
       "severity": "PASS",
       "pass": true,
-      "summary": "All 27 configs have >= 100 Phase A bets. Min: 200, Total: 5400/5400",
+      "summary": "All 27 configs have >= 100 Phase A bets (min 200, total 5400/5400). Cell coverage over the whole capture: 263 of 351 multiplier cells were paid at least once; the rest are enumerated in details with the share of theoretical RTP they carry.",
       "failures": [],
       "details": {
         "configCounts": {
@@ -1106,22 +1467,268 @@
         "totalCorrect": true,
         "imbalancedConfigs": 0,
         "minSample": 200,
-        "note": "Phase A uses balanced queue: 108 epochs x 50 bets = 5400, exactly 200 bets per config. IndexedDB capture eliminates localStorage quota issues."
-      }
+        "note": "Phase A uses balanced queue: 108 epochs x 50 bets = 5400, exactly 200 bets per config. IndexedDB capture eliminates localStorage quota issues.",
+        "cellCoverage": {
+          "population": "all captured bets, every phase",
+          "totalCells": 351,
+          "cellsPaid": 263,
+          "cellsNeverPaid": 88,
+          "rtpShareNeverPaid": 0.07680038633887329,
+          "neverPaidByConfig": {
+            "8r/low": {
+              "slots": [
+                0
+              ],
+              "rtpShare": 0.022099447415518076
+            },
+            "9r/low": {
+              "slots": [
+                0,
+                8,
+                9
+              ],
+              "rtpShare": 0.05761641646621154
+            },
+            "9r/medium": {
+              "slots": [
+                0,
+                9
+              ],
+              "rtpShare": 0.07092198545204115
+            },
+            "9r/high": {
+              "slots": [
+                0,
+                9
+              ],
+              "rtpShare": 0.16955835932791158
+            },
+            "10r/low": {
+              "slots": [
+                10
+              ],
+              "rtpShare": 0.008778851881812905
+            },
+            "10r/medium": {
+              "slots": [
+                10
+              ],
+              "rtpShare": 0.021721958825795768
+            },
+            "10r/high": {
+              "slots": [
+                10
+              ],
+              "rtpShare": 0.07492113560730855
+            },
+            "11r/low": {
+              "slots": [
+                0,
+                10,
+                11
+              ],
+              "rtpShare": 0.02456105739943597
+            },
+            "11r/medium": {
+              "slots": [
+                0,
+                1,
+                10
+              ],
+              "rtpShare": 0.07692307669974664
+            },
+            "11r/high": {
+              "slots": [
+                0,
+                10,
+                11
+              ],
+              "rtpShare": 0.19401221171280034
+            },
+            "12r/low": {
+              "slots": [
+                0,
+                12
+              ],
+              "rtpShare": 0.004933155730965443
+            },
+            "12r/medium": {
+              "slots": [
+                0,
+                1,
+                11,
+                12
+              ],
+              "rtpShare": 0.08138903948609785
+            },
+            "12r/high": {
+              "slots": [
+                0,
+                1,
+                11,
+                12
+              ],
+              "rtpShare": 0.22562687697657763
+            },
+            "13r/low": {
+              "slots": [
+                0,
+                1,
+                12,
+                13
+              ],
+              "rtpShare": 0.01482120837648998
+            },
+            "13r/medium": {
+              "slots": [
+                0,
+                1,
+                12,
+                13
+              ],
+              "rtpShare": 0.052283713113613385
+            },
+            "13r/high": {
+              "slots": [
+                0,
+                12,
+                13
+              ],
+              "rtpShare": 0.12331838513602392
+            },
+            "14r/low": {
+              "slots": [
+                0,
+                1,
+                2,
+                12,
+                13,
+                14
+              ],
+              "rtpShare": 0.029099517905058627
+            },
+            "14r/medium": {
+              "slots": [
+                0,
+                1,
+                13,
+                14
+              ],
+              "rtpShare": 0.033047252489061256
+            },
+            "14r/high": {
+              "slots": [
+                0,
+                1,
+                2,
+                12,
+                14
+              ],
+              "rtpShare": 0.3021595149115429
+            },
+            "15r/low": {
+              "slots": [
+                0,
+                1,
+                2,
+                13,
+                14,
+                15
+              ],
+              "rtpShare": 0.027743013383274655
+            },
+            "15r/medium": {
+              "slots": [
+                0,
+                1,
+                2,
+                13,
+                14,
+                15
+              ],
+              "rtpShare": 0.09328047630850006
+            },
+            "15r/high": {
+              "slots": [
+                0,
+                1,
+                2,
+                14,
+                15
+              ],
+              "rtpShare": 0.20231748229463264
+            },
+            "16r/low": {
+              "slots": [
+                0,
+                1,
+                2,
+                3,
+                14,
+                15,
+                16
+              ],
+              "rtpShare": 0.024414378598646876
+            },
+            "16r/medium": {
+              "slots": [
+                0,
+                3,
+                14,
+                15,
+                16
+              ],
+              "rtpShare": 0.07516224034876065
+            },
+            "16r/high": {
+              "slots": [
+                0,
+                1,
+                16
+              ],
+              "rtpShare": 0.06289967510200968
+            }
+          },
+          "note": "A never-paid cell is one no captured bet landed in. It is still checked against the committed multiplier table (Step 13) and its probability is still derived independently (Step 17); what it lacks is a live payout confirming the operator honours it."
+        }
+      },
+      "profileIds": [
+        "PLINKO-15"
+      ],
+      "profileChecks": [
+        {
+          "id": "PLINKO-15",
+          "coverage": "full"
+        }
+      ]
     },
     {
       "step": 12,
-      "name": "Epoch Size",
+      "name": "Epoch Size & Count",
       "ecRefs": [
         "EC-31"
       ],
       "severity": "PASS",
       "pass": true,
-      "summary": "All 162 epochs have exactly 50 bets",
+      "summary": "All 162 commitments hold exactly 50 bets, and the number of commitments equals src/loader.ts EXPECTED_EPOCHS — the two multiply to EXPECTED_BETS, so neither a shrunken capture nor a merged epoch passes by agreeing with itself",
       "failures": [],
       "details": {
-        "epochs": 162
-      }
+        "epochs": 162,
+        "expectedEpochs": 162,
+        "epochSize": 50,
+        "betsImplied": 8100,
+        "expectedBets": 8100,
+        "issues": 0
+      },
+      "profileIds": [
+        "PLINKO-05"
+      ],
+      "profileChecks": [
+        {
+          "id": "PLINKO-05",
+          "coverage": "full"
+        }
+      ]
     },
     {
       "step": 13,
@@ -1135,7 +1742,16 @@
       "severity": "PASS",
       "pass": true,
       "summary": "Given the committed plinkoConfig.json multiplier table, slot symmetry holds across all 27 configs and the 16r/high 0.2× floor is satisfied. Live bets confirm their observed multipliers against the same table (tol 1e-5); unobserved rare-slot entries are validated structurally via the symmetry identity over the full committed table.",
-      "failures": []
+      "failures": [],
+      "profileIds": [
+        "PLINKO-14"
+      ],
+      "profileChecks": [
+        {
+          "id": "PLINKO-14",
+          "coverage": "full"
+        }
+      ]
     },
     {
       "step": 14,
@@ -1160,7 +1776,16 @@
           "C": 5,
           "D": 11
         }
-      }
+      },
+      "profileIds": [
+        "PLINKO-05"
+      ],
+      "profileChecks": [
+        {
+          "id": "PLINKO-05",
+          "coverage": "full"
+        }
+      ]
     },
     {
       "step": 15,
@@ -1170,15 +1795,26 @@
       ],
       "severity": "PASS",
       "pass": true,
-      "summary": "SHA-256 of master JSON verified: 3cf9359d88220bc800bb32edfe04399f55b909302262928ee3a0582715635267",
+      "summary": "SHA-256 of the master JSON equals the pin in src/loader.ts: 3cf9359d88220bc800bb32edfe04399f55b909302262928ee3a0582715635267",
       "failures": [],
       "details": {
         "file": "data/plinko-master-8100bets.json",
         "sizeBytes": 6105877,
         "sha256": "3cf9359d88220bc800bb32edfe04399f55b909302262928ee3a0582715635267",
         "expected": "3cf9359d88220bc800bb32edfe04399f55b909302262928ee3a0582715635267",
+        "pinnedIn": "src/loader.ts EXPECTED_DATASET_SHA256",
+        "contextExpected": "3cf9359d88220bc800bb32edfe04399f55b909302262928ee3a0582715635267",
         "match": true
-      }
+      },
+      "profileIds": [
+        "PLINKO-26"
+      ],
+      "profileChecks": [
+        {
+          "id": "PLINKO-26",
+          "coverage": "full"
+        }
+      ]
     },
     {
       "step": 16,
@@ -1189,38 +1825,223 @@
       ],
       "severity": "PASS",
       "pass": true,
-      "summary": "All 27 configs: bracket[0] house_edge=0.001, both test amounts ≤ max_bet, symmetric multipliers",
+      "summary": "Full scaling_edge coverage: all 5157 brackets across 27 configs — each bracket's declared house_edge above bracket 0 equals 1 − its derived RTP (tol 0.000001; bracket 0's is the RTP claim, scored by RTP-CLAIM on Step 19), multipliers symmetric, the ladder tiles the stake axis with monotone non-decreasing edge, every config spans the declared [0.001, 0.02], and bottom/middle/top probe stakes each resolve, by lookup in the config, to the bracket whose range contains them (the config only: which bracket the server applies above bracket 0 was not tested, R-BRACKET). RTP falls from 99.9% at bracket 0 to 98.0% at the top bracket.",
       "failures": [],
       "details": {
-        "16r/high_bracket0": {
-          "house_edge": "0.001",
-          "max_bet": "335.946312864870400000",
-          "multipliers": [
-            "1009.33110594",
-            "131.21304378",
-            "26.24260875",
-            "9.08397996",
-            "4.03732442",
-            "2.01866221",
-            "0.20186622",
-            "0.20186622",
-            "0.20186622",
-            "0.20186622",
-            "0.20186622",
-            "2.01866221",
-            "4.03732442",
-            "9.08397996",
-            "26.24260875",
-            "131.21304378",
-            "1009.33110594"
-          ]
+        "bracketsAudited": 5157,
+        "rtpSpanByConfig": {
+          "8r/low": {
+            "brackets": 191,
+            "edgeMin": 0.001,
+            "edgeMax": 0.02,
+            "rtpBracket0": 0.999000001796875,
+            "rtpTop": 0.9799999978124999
+          },
+          "8r/medium": {
+            "brackets": 191,
+            "edgeMin": 0.001,
+            "edgeMax": 0.02,
+            "rtpBracket0": 0.9990000015625001,
+            "rtpTop": 0.9799999975781251
+          },
+          "8r/high": {
+            "brackets": 191,
+            "edgeMin": 0.001,
+            "edgeMax": 0.02,
+            "rtpBracket0": 0.9990000005468751,
+            "rtpTop": 0.9800000012499999
+          },
+          "9r/low": {
+            "brackets": 191,
+            "edgeMin": 0.001,
+            "edgeMax": 0.02,
+            "rtpBracket0": 0.9990000021875001,
+            "rtpTop": 0.9799999984765627
+          },
+          "9r/medium": {
+            "brackets": 191,
+            "edgeMin": 0.001,
+            "edgeMax": 0.02,
+            "rtpBracket0": 0.99900000234375,
+            "rtpTop": 0.9799999995703125
+          },
+          "9r/high": {
+            "brackets": 191,
+            "edgeMin": 0.001,
+            "edgeMax": 0.02,
+            "rtpBracket0": 0.9990000005078125,
+            "rtpTop": 0.9800000007812502
+          },
+          "10r/low": {
+            "brackets": 191,
+            "edgeMin": 0.001,
+            "edgeMax": 0.02,
+            "rtpBracket0": 0.9989999974804687,
+            "rtpTop": 0.9799999986132812
+          },
+          "10r/medium": {
+            "brackets": 191,
+            "edgeMin": 0.001,
+            "edgeMax": 0.02,
+            "rtpBracket0": 0.9990000021679687,
+            "rtpTop": 0.9799999971093751
+          },
+          "10r/high": {
+            "brackets": 191,
+            "edgeMin": 0.001,
+            "edgeMax": 0.02,
+            "rtpBracket0": 0.9990000002734376,
+            "rtpTop": 0.9800000021679687
+          },
+          "11r/low": {
+            "brackets": 191,
+            "edgeMin": 0.001,
+            "edgeMax": 0.02,
+            "rtpBracket0": 0.9989999994335936,
+            "rtpTop": 0.9800000016210938
+          },
+          "11r/medium": {
+            "brackets": 191,
+            "edgeMin": 0.001,
+            "edgeMax": 0.02,
+            "rtpBracket0": 0.9990000016503905,
+            "rtpTop": 0.97999999859375
+          },
+          "11r/high": {
+            "brackets": 191,
+            "edgeMin": 0.001,
+            "edgeMax": 0.02,
+            "rtpBracket0": 0.9990000005078125,
+            "rtpTop": 0.9800000017480468
+          },
+          "12r/low": {
+            "brackets": 191,
+            "edgeMin": 0.001,
+            "edgeMax": 0.02,
+            "rtpBracket0": 0.9990000005859376,
+            "rtpTop": 0.9799999977246093
+          },
+          "12r/medium": {
+            "brackets": 191,
+            "edgeMin": 0.001,
+            "edgeMax": 0.02,
+            "rtpBracket0": 0.9990000007519532,
+            "rtpTop": 0.9800000010644531
+          },
+          "12r/high": {
+            "brackets": 191,
+            "edgeMin": 0.001,
+            "edgeMax": 0.02,
+            "rtpBracket0": 0.9990000011816407,
+            "rtpTop": 0.9800000018457034
+          },
+          "13r/low": {
+            "brackets": 191,
+            "edgeMin": 0.001,
+            "edgeMax": 0.02,
+            "rtpBracket0": 0.9989999999902343,
+            "rtpTop": 0.9799999972558594
+          },
+          "13r/medium": {
+            "brackets": 191,
+            "edgeMin": 0.001,
+            "edgeMax": 0.02,
+            "rtpBracket0": 0.9990000001660156,
+            "rtpTop": 0.980000000571289
+          },
+          "13r/high": {
+            "brackets": 191,
+            "edgeMin": 0.001,
+            "edgeMax": 0.02,
+            "rtpBracket0": 0.9990000011450194,
+            "rtpTop": 0.9799999980029294
+          },
+          "14r/low": {
+            "brackets": 191,
+            "edgeMin": 0.001,
+            "edgeMax": 0.02,
+            "rtpBracket0": 0.998999999506836,
+            "rtpTop": 0.9799999995080565
+          },
+          "14r/medium": {
+            "brackets": 191,
+            "edgeMin": 0.001,
+            "edgeMax": 0.02,
+            "rtpBracket0": 0.999000001706543,
+            "rtpTop": 0.9799999993115234
+          },
+          "14r/high": {
+            "brackets": 191,
+            "edgeMin": 0.001,
+            "edgeMax": 0.02,
+            "rtpBracket0": 0.9990000004406738,
+            "rtpTop": 0.9799999986291503
+          },
+          "15r/low": {
+            "brackets": 191,
+            "edgeMin": 0.001,
+            "edgeMax": 0.02,
+            "rtpBracket0": 0.9990000005273438,
+            "rtpTop": 0.9800000003662109
+          },
+          "15r/medium": {
+            "brackets": 191,
+            "edgeMin": 0.001,
+            "edgeMax": 0.02,
+            "rtpBracket0": 0.9990000007232666,
+            "rtpTop": 0.979999999968872
+          },
+          "15r/high": {
+            "brackets": 191,
+            "edgeMin": 0.001,
+            "edgeMax": 0.02,
+            "rtpBracket0": 0.999000000333252,
+            "rtpTop": 0.9799999993841553
+          },
+          "16r/low": {
+            "brackets": 191,
+            "edgeMin": 0.001,
+            "edgeMax": 0.02,
+            "rtpBracket0": 0.9989999989468383,
+            "rtpTop": 0.9800000004943847
+          },
+          "16r/medium": {
+            "brackets": 191,
+            "edgeMin": 0.001,
+            "edgeMax": 0.02,
+            "rtpBracket0": 0.9989999983651733,
+            "rtpTop": 0.9799999987408446
+          },
+          "16r/high": {
+            "brackets": 191,
+            "edgeMin": 0.001,
+            "edgeMax": 0.02,
+            "rtpBracket0": 0.9989999995104982,
+            "rtpTop": 0.9799999981604006
+          }
         },
-        "progressiveEdge_sample_16r_high": {
-          "brackets": 191,
-          "minEdge": "0.001",
-          "maxEdge": "0.02"
+        "modeCoverage": {
+          "scaling_edge": "all 5157 brackets across 27 configs — declared edge = 1−RTP per bracket above bracket 0 (bracket 0: RTP-CLAIM, Step 19), span [0.001, 0.02], RTP falls from 99.9% (bracket 0) to 98.0% (top bracket)",
+          "wtf": "n/a — declared: this game ships no WTF multiplier table",
+          "zero_edge": "n/a — declared: on the captured stakes ($0.01 and $10, bracket 0) the effective_edge=0 label does not select a distinct table (Step 10 measures those bets use the same bracket-0 multipliers), so no separate zero-edge RTP mode was observed"
         }
-      }
+      },
+      "profileIds": [
+        "PLINKO-17",
+        "PLINKO-39"
+      ],
+      "profileChecks": [
+        {
+          "id": "PLINKO-17",
+          "coverage": "full",
+          "note": "scaling_edge half — every bracket of every config is recomputed at full coverage, its RTP derived and equated to its declared house_edge; WTF and a distinct zero-edge table are declared n/a (this game ships neither)"
+        },
+        {
+          "id": "PLINKO-39",
+          "coverage": "full",
+          "note": "all brackets of all 27 configs are audited: declared edge = 1−derived RTP, symmetric multipliers, the ladder tiles the stake axis with no gap/overlap and monotone non-decreasing edge, the per-config span is the declared [0.001, 0.02], and bottom/middle/top stakes each resolve to the bracket whose range contains them (a lookup in the pinned config; which bracket the server applies above bracket 0 was not tested, R-BRACKET)"
+        }
+      ]
     },
     {
       "step": 17,
@@ -1230,16 +2051,78 @@
       ],
       "severity": "PASS",
       "pass": true,
-      "summary": "Given the committed plinkoConfig.json multiplier table, independently-derived binomial probabilities P(slot)=C(rows,k)/2^rows produce 99.9% RTP (analytic identity over the full table) for all 27 configurations. All 351 per-slot probabilities exactly equal the independent binomial. Live play verifies the observed payout entries against the same committed table; unobserved rare-slot entries are evaluated from that table. The RTP proof is non-circular: probabilities come from stats.ts (binomProb), not from plinkoConfig.json.",
+      "summary": "Given the committed plinkoConfig.json multiplier table, independently-derived binomial probabilities P(slot)=C(rows,k)/2^rows produce 99.9% RTP (analytic identity over the full table) for all 27 configurations. All 351 per-slot probabilities exactly equal the independent binomial, and every board is confirmed a second time by walking all 2^rows paths through it and counting where they land — 9 boards, 130,816 paths, agreeing with an integer Pascal recurrence exactly and with the closed form and the operator's table inside 1e-12. The RTP proof is non-circular: probabilities come from stats.ts (binomProb) and from enumeration, not from plinkoConfig.json.",
       "failures": [],
       "details": {
         "probabilitiesChecked": 351,
         "probabilityMismatches": 0,
         "rtpCrossChecks": 27,
         "rtpMismatches": 0,
-        "method": "binomProb(rows, k) = C(rows,k) * 0.5^rows from stats.ts — not sourced from plinkoConfig.json",
+        "enumeration": {
+          "boards": 9,
+          "pathsWalked": 130816,
+          "tolerance": 1e-12,
+          "mismatches": 0,
+          "perBoard": {
+            "8r": {
+              "paths": 256,
+              "countsMatchPascal": true,
+              "maxProbGap": 0
+            },
+            "9r": {
+              "paths": 512,
+              "countsMatchPascal": true,
+              "maxProbGap": 0
+            },
+            "10r": {
+              "paths": 1024,
+              "countsMatchPascal": true,
+              "maxProbGap": 0
+            },
+            "11r": {
+              "paths": 2048,
+              "countsMatchPascal": true,
+              "maxProbGap": 0
+            },
+            "12r": {
+              "paths": 4096,
+              "countsMatchPascal": true,
+              "maxProbGap": 0
+            },
+            "13r": {
+              "paths": 8192,
+              "countsMatchPascal": true,
+              "maxProbGap": 0
+            },
+            "14r": {
+              "paths": 16384,
+              "countsMatchPascal": true,
+              "maxProbGap": 0
+            },
+            "15r": {
+              "paths": 32768,
+              "countsMatchPascal": true,
+              "maxProbGap": 0
+            },
+            "16r": {
+              "paths": 65536,
+              "countsMatchPascal": true,
+              "maxProbGap": 0
+            }
+          }
+        },
+        "method": "binomProb(rows, k) = C(rows,k) * 0.5^rows from stats.ts — not sourced from plinkoConfig.json; cross-checked by exhaustive 2^rows path enumeration and an integer Pascal recurrence",
         "significance": "Breaks circularity: theoretical RTP is computed from independently verified probabilities × observed multipliers."
-      }
+      },
+      "profileIds": [
+        "PLINKO-18"
+      ],
+      "profileChecks": [
+        {
+          "id": "PLINKO-18",
+          "coverage": "full"
+        }
+      ]
     },
     {
       "step": 18,
@@ -1249,26 +2132,158 @@
       ],
       "severity": "PASS",
       "pass": true,
-      "summary": "Phase D: 500/500 slots recomputed correctly. 10 distinct custom client seeds. 434/500 slots differ with wrong seed.",
+      "summary": "Phase D: all 500/500 slots recomputed from the revealed seed, none skipped. 10 distinct player-set client seeds against the floor in src/loader.ts, and the wrong-seed re-drop moved 434 of 500 slots. All 10 of those seeds are clock-derived and therefore enumerable; the epochs they were used in are listed in details as a disclosure.",
       "failures": [],
       "details": {
         "totalBets": 500,
+        "expectedBets": 500,
         "slotsChecked": 500,
         "slotsSkipped": 0,
         "slotMismatches": 0,
         "distinctClientSeeds": 10,
-        "clientSeedInfluence": "434/500 slots changed with wrong seed (86.8%)"
-      }
+        "expectedDistinctClientSeeds": 10,
+        "configs": [
+          "8r/low",
+          "8r/medium",
+          "8r/high",
+          "9r/low",
+          "9r/medium",
+          "9r/high",
+          "10r/low",
+          "10r/medium",
+          "10r/high",
+          "11r/low",
+          "11r/medium",
+          "11r/high",
+          "12r/low",
+          "12r/medium",
+          "12r/high",
+          "13r/low",
+          "13r/medium",
+          "13r/high",
+          "14r/low",
+          "14r/medium",
+          "14r/high",
+          "15r/low",
+          "15r/medium",
+          "15r/high",
+          "16r/low",
+          "16r/medium",
+          "16r/high"
+        ],
+        "clientSeedInfluence": {
+          "changed": 434,
+          "compared": 500
+        },
+        "predictableClientSeeds": {
+          "count": 10,
+          "construction": "'pfaudit' + Date.now().toString(36) — capture/capture-auto.reference.js",
+          "exposedEpochs": 10,
+          "exposedBets": 500,
+          "entries": [
+            {
+              "clientSeed": "pfauditmnta73k8",
+              "decodedAt": "2026-04-10T19:10:50.312Z",
+              "bets": 50,
+              "epochs": [
+                "debfede46cc0af86346d04057d2ee79879b97099807f62874f132f4f023b4b12"
+              ]
+            },
+            {
+              "clientSeed": "pfauditmnta898d",
+              "decodedAt": "2026-04-10T19:11:44.317Z",
+              "bets": 50,
+              "epochs": [
+                "d9207ca0f8e1717f6653fa920a214f87a3c8292f27532049682201a7ef5a81f6"
+              ]
+            },
+            {
+              "clientSeed": "pfauditmnta9h7p",
+              "decodedAt": "2026-04-10T19:12:41.317Z",
+              "bets": 50,
+              "epochs": [
+                "9cfae7ed8e3fc4b05cdf21840ee7bf87d4914d92f9ff382927e5bfa2ceb86a7b"
+              ]
+            },
+            {
+              "clientSeed": "pfauditmntaanng",
+              "decodedAt": "2026-04-10T19:13:36.316Z",
+              "bets": 50,
+              "epochs": [
+                "95f9b198d0ca87a4b8b2f82d27cf56c03bf3573f649e3ad500182f66f732ae5f"
+              ]
+            },
+            {
+              "clientSeed": "pfauditmntabx6c",
+              "decodedAt": "2026-04-10T19:14:35.316Z",
+              "bets": 50,
+              "epochs": [
+                "09513ec6ad7b8b60347425f50d131b1d7b7f3069eb671425ab747fe82e9ab1dc"
+              ]
+            },
+            {
+              "clientSeed": "pfauditmntad55n",
+              "decodedAt": "2026-04-10T19:15:32.315Z",
+              "bets": 50,
+              "epochs": [
+                "e2f213d5d7389dc95b217e08121bd3d4ce9c5f7cc9d694690f388719776b1de1"
+              ]
+            },
+            {
+              "clientSeed": "pfauditmntaeblc",
+              "decodedAt": "2026-04-10T19:16:27.312Z",
+              "bets": 50,
+              "epochs": [
+                "e2ca55674f8703fe8012c72483ca991bfed1f9782efd65ea86f3e3f6c3e4fd9b"
+              ]
+            },
+            {
+              "clientSeed": "pfauditmntafghp",
+              "decodedAt": "2026-04-10T19:17:20.317Z",
+              "bets": 50,
+              "epochs": [
+                "80aea139cb50b44d5e383140d0fd1e4ed543b94006aec4dda0ff8fbb85f04897"
+              ]
+            },
+            {
+              "clientSeed": "pfauditmntagp8u",
+              "decodedAt": "2026-04-10T19:18:18.318Z",
+              "bets": 50,
+              "epochs": [
+                "95dc96ca8a71fb013be4631586e7d2b9abc4c9d28aa89c152622a6479ca2e2d5"
+              ]
+            },
+            {
+              "clientSeed": "pfauditmntahx83",
+              "decodedAt": "2026-04-10T19:19:15.315Z",
+              "bets": 50,
+              "epochs": [
+                "3de76da07892329c5f5672f6223ab6cab84027d87324094dc2fae6bc8646906a"
+              ]
+            }
+          ],
+          "consequence": "the auditor-side seed is enumerable from the capture window, so these epochs do not demonstrate the protection an unguessable player seed would give; the outcomes themselves still recompute exactly and Pass 2 tests the seed selection they were paired with"
+        }
+      },
+      "profileIds": [
+        "PLINKO-06"
+      ],
+      "profileChecks": [
+        {
+          "id": "PLINKO-06",
+          "coverage": "full"
+        }
+      ]
     },
     {
       "step": 19,
-      "name": "Simulation Results — Pass 1 Integrity",
+      "name": "Simulation Results — Pass 1 Integrity (re-derived & replayed)",
       "ecRefs": [
         "EC-34"
       ],
       "severity": "PASS",
       "pass": true,
-      "summary": "27,000,000 rounds × 27 configs; avg RTP=99.9166%. 0/27 configs fail at Bonferroni-corrected threshold (α/27 = 0.00037). 0/27 flag even at uncorrected α = 0.01.",
+      "summary": "27,000,000 rounds × 27 configs; avg RTP=99.9166%. RTP, standard error, chi-squared and its p-value re-derived in verify from the committed histograms for 27/27 configs and required to agree with the artifact's own scalars; the whole experiment REPLAYED from the pinned seeds (27/27 configs × 1,000,000 rounds): census exact (0 slot-count mismatches), 691 derived figures compared, 691 within the reproduction tolerance, 0 beyond the reproduction tolerance. 0/27 configs fail at Bonferroni-corrected threshold (α/27 = 0.00037). 0/27 flag even at uncorrected α = 0.01.",
       "failures": [],
       "details": {
         "totalRounds": 27000000,
@@ -1280,8 +2295,443 @@
         "bonferroniAlpha": 0.00037037037037037035,
         "avgTheoreticalRTP": 0.999000000531119,
         "avgSimulatedRTP": 0.999166188296149,
-        "pass2Present": true
-      }
+        "pass2Present": true,
+        "rederivation": {
+          "source": "slotCounts in outputs/simulation-results.json + the committed multiplier table",
+          "configsRederived": 27,
+          "tolerance": 1e-9,
+          "seSigmaBound": 5,
+          "maxSigmasFromTheoretical": 1.7909707150517762,
+          "perConfig": [
+            {
+              "config": "8r/low",
+              "rows": 8,
+              "risk": "low",
+              "rounds": 1000000,
+              "derivedRTP": 0.99893576302343,
+              "theoreticalRTP": 0.999000001796875,
+              "declaredRTP": 0.999,
+              "se": 0.0005633449470783086,
+              "sigmas": 0.11403097476622857,
+              "chi2": 9.749242514285713,
+              "df": 8,
+              "pValue": 0.28306880249363375
+            },
+            {
+              "config": "8r/medium",
+              "rows": 8,
+              "risk": "medium",
+              "rounds": 1000000,
+              "derivedRTP": 0.99677244305298,
+              "theoreticalRTP": 0.9990000015625001,
+              "declaredRTP": 0.999,
+              "se": 0.0012437715987197305,
+              "sigmas": 1.7909707150517762,
+              "chi2": 14.1853888,
+              "df": 8,
+              "pValue": 0.07705947466694363
+            },
+            {
+              "config": "8r/high",
+              "rows": 8,
+              "risk": "high",
+              "rounds": 1000000,
+              "derivedRTP": 0.9999675115653399,
+              "theoreticalRTP": 0.9990000005468751,
+              "declaredRTP": 0.999,
+              "se": 0.002693654427669177,
+              "sigmas": 0.3591815670661236,
+              "chi2": 4.81188662857143,
+              "df": 8,
+              "pValue": 0.7774797546429908
+            },
+            {
+              "config": "9r/low",
+              "rows": 9,
+              "risk": "low",
+              "rounds": 1000000,
+              "derivedRTP": 0.9989983369252001,
+              "theoreticalRTP": 0.9990000021875001,
+              "declaredRTP": 0.999,
+              "se": 0.00046548764300975736,
+              "sigmas": 0.0035774575865780054,
+              "chi2": 1.8587123809523811,
+              "df": 9,
+              "pValue": 0.9935098050200847
+            },
+            {
+              "config": "9r/medium",
+              "rows": 9,
+              "risk": "medium",
+              "rounds": 1000000,
+              "derivedRTP": 0.99994130753098,
+              "theoreticalRTP": 0.99900000234375,
+              "declaredRTP": 0.999,
+              "se": 0.0013005487972888843,
+              "sigmas": 0.723775370206986,
+              "chi2": 7.522470603174604,
+              "df": 9,
+              "pValue": 0.5828898764123198
+            },
+            {
+              "config": "9r/high",
+              "rows": 9,
+              "risk": "high",
+              "rounds": 1000000,
+              "derivedRTP": 0.9956555628078201,
+              "theoreticalRTP": 0.9990000005078125,
+              "declaredRTP": 0.999,
+              "se": 0.0029420704322259718,
+              "sigmas": 1.136763302251052,
+              "chi2": 8.751947174603174,
+              "df": 9,
+              "pValue": 0.46047967862217243
+            },
+            {
+              "config": "10r/low",
+              "rows": 10,
+              "risk": "low",
+              "rounds": 1000000,
+              "derivedRTP": 0.9990208217795101,
+              "theoreticalRTP": 0.9989999974804687,
+              "declaredRTP": 0.999,
+              "se": 0.0005346033838044504,
+              "sigmas": 0.038952800659778124,
+              "chi2": 8.398950806349207,
+              "df": 10,
+              "pValue": 0.5899290166139411
+            },
+            {
+              "config": "10r/medium",
+              "rows": 10,
+              "risk": "medium",
+              "rounds": 1000000,
+              "derivedRTP": 0.99815186537484,
+              "theoreticalRTP": 0.9990000021679687,
+              "declaredRTP": 0.999,
+              "se": 0.001216310432411624,
+              "sigmas": 0.6973029010752138,
+              "chi2": 12.083164647619048,
+              "df": 10,
+              "pValue": 0.2795291694541189
+            },
+            {
+              "config": "10r/high",
+              "rows": 10,
+              "risk": "high",
+              "rounds": 1000000,
+              "derivedRTP": 0.9946043498479901,
+              "theoreticalRTP": 0.9990000002734376,
+              "declaredRTP": 0.999,
+              "se": 0.003640132237892496,
+              "sigmas": 1.2075524014458499,
+              "chi2": 10.557097853968253,
+              "df": 10,
+              "pValue": 0.39304776488856374
+            },
+            {
+              "config": "11r/low",
+              "rows": 11,
+              "risk": "low",
+              "rounds": 1000000,
+              "derivedRTP": 0.99875554418929,
+              "theoreticalRTP": 0.9989999994335936,
+              "declaredRTP": 0.999,
+              "se": 0.0004412197651437688,
+              "sigmas": 0.5540441830024442,
+              "chi2": 14.91091792900433,
+              "df": 11,
+              "pValue": 0.186611585957843
+            },
+            {
+              "config": "11r/medium",
+              "rows": 11,
+              "risk": "medium",
+              "rounds": 1000000,
+              "derivedRTP": 0.9992052273803199,
+              "theoreticalRTP": 0.9990000016503905,
+              "declaredRTP": 0.999,
+              "se": 0.001130620824976945,
+              "sigmas": 0.18151596485374363,
+              "chi2": 16.36575240865801,
+              "df": 11,
+              "pValue": 0.12808639806166766
+            },
+            {
+              "config": "11r/high",
+              "rows": 11,
+              "risk": "high",
+              "rounds": 1000000,
+              "derivedRTP": 1.00092690838506,
+              "theoreticalRTP": 0.9990000005078125,
+              "declaredRTP": 0.999,
+              "se": 0.004171782072694229,
+              "sigmas": 0.4618908283488418,
+              "chi2": 6.326801288311689,
+              "df": 11,
+              "pValue": 0.8506937157882913
+            },
+            {
+              "config": "12r/low",
+              "rows": 12,
+              "risk": "low",
+              "rounds": 1000000,
+              "derivedRTP": 0.9991637878964801,
+              "theoreticalRTP": 0.9990000005859376,
+              "declaredRTP": 0.999,
+              "se": 0.0003902532530271928,
+              "sigmas": 0.41969492700433364,
+              "chi2": 9.110451606349207,
+              "df": 12,
+              "pValue": 0.6934685626392029
+            },
+            {
+              "config": "12r/medium",
+              "rows": 12,
+              "risk": "medium",
+              "rounds": 1000000,
+              "derivedRTP": 0.9989507738500101,
+              "theoreticalRTP": 0.9990000007519532,
+              "declaredRTP": 0.999,
+              "se": 0.0012966223778551832,
+              "sigmas": 0.03796548847515505,
+              "chi2": 16.20237874978355,
+              "df": 12,
+              "pValue": 0.18214160162904403
+            },
+            {
+              "config": "12r/high",
+              "rows": 12,
+              "risk": "high",
+              "rounds": 1000000,
+              "derivedRTP": 0.9985151880962598,
+              "theoreticalRTP": 0.9990000011816407,
+              "declaredRTP": 0.999,
+              "se": 0.004397144225346562,
+              "sigmas": 0.11025635288154124,
+              "chi2": 10.99695143896104,
+              "df": 12,
+              "pValue": 0.5291799673354822
+            },
+            {
+              "config": "13r/low",
+              "rows": 13,
+              "risk": "low",
+              "rounds": 1000000,
+              "derivedRTP": 0.9991198464800799,
+              "theoreticalRTP": 0.9989999999902343,
+              "declaredRTP": 0.999,
+              "se": 0.000475505854220262,
+              "sigmas": 0.2520399881136442,
+              "chi2": 17.27530646775447,
+              "df": 13,
+              "pValue": 0.18702237156213053
+            },
+            {
+              "config": "13r/medium",
+              "rows": 13,
+              "risk": "medium",
+              "rounds": 1000000,
+              "derivedRTP": 0.9974776901301401,
+              "theoreticalRTP": 0.9990000001660156,
+              "declaredRTP": 0.999,
+              "se": 0.0013570008172131827,
+              "sigmas": 1.1218195424538193,
+              "chi2": 13.507533555866356,
+              "df": 13,
+              "pValue": 0.4094157214129408
+            },
+            {
+              "config": "13r/high",
+              "rows": 13,
+              "risk": "high",
+              "rounds": 1000000,
+              "derivedRTP": 1.00361240081572,
+              "theoreticalRTP": 0.9990000011450194,
+              "declaredRTP": 0.999,
+              "se": 0.004962995307480178,
+              "sigmas": 0.9293580559604239,
+              "chi2": 19.309204388500387,
+              "df": 13,
+              "pValue": 0.11382432513830354
+            },
+            {
+              "config": "14r/low",
+              "rows": 14,
+              "risk": "low",
+              "rounds": 1000000,
+              "derivedRTP": 0.9987184220542801,
+              "theoreticalRTP": 0.998999999506836,
+              "declaredRTP": 0.999,
+              "se": 0.0003217585858573057,
+              "sigmas": 0.8751202452165322,
+              "chi2": 20.61024134265734,
+              "df": 14,
+              "pValue": 0.11204572338941832
+            },
+            {
+              "config": "14r/medium",
+              "rows": 14,
+              "risk": "medium",
+              "rounds": 1000000,
+              "derivedRTP": 0.9994533058647,
+              "theoreticalRTP": 0.999000001706543,
+              "declaredRTP": 0.999,
+              "se": 0.001361080677709614,
+              "sigmas": 0.3330472363473982,
+              "chi2": 14.789931732267732,
+              "df": 14,
+              "pValue": 0.3926637873343084
+            },
+            {
+              "config": "14r/high",
+              "rows": 14,
+              "risk": "high",
+              "rounds": 1000000,
+              "derivedRTP": 0.9990846667746298,
+              "theoreticalRTP": 0.9990000004406738,
+              "declaredRTP": 0.999,
+              "se": 0.005622015845642405,
+              "sigmas": 0.015059782163653883,
+              "chi2": 5.095529707625708,
+              "df": 14,
+              "pValue": 0.9844382603440094
+            },
+            {
+              "config": "15r/low",
+              "rows": 15,
+              "risk": "low",
+              "rounds": 1000000,
+              "derivedRTP": 0.9991651419537398,
+              "theoreticalRTP": 0.9990000005273438,
+              "declaredRTP": 0.999,
+              "se": 0.00041456323639841414,
+              "sigmas": 0.3983503887867687,
+              "chi2": 10.653278261649461,
+              "df": 15,
+              "pValue": 0.7767633644913006
+            },
+            {
+              "config": "15r/medium",
+              "rows": 15,
+              "risk": "medium",
+              "rounds": 1000000,
+              "derivedRTP": 0.99923418333444,
+              "theoreticalRTP": 0.9990000007232666,
+              "declaredRTP": 0.999,
+              "se": 0.0015675958183427523,
+              "sigmas": 0.149389663096351,
+              "chi2": 11.980876564146964,
+              "df": 15,
+              "pValue": 0.6804759791636922
+            },
+            {
+              "config": "15r/high",
+              "rows": 15,
+              "risk": "high",
+              "rounds": 1000000,
+              "derivedRTP": 1.00002799639648,
+              "theoreticalRTP": 0.999000000333252,
+              "declaredRTP": 0.999,
+              "se": 0.006289233056067171,
+              "sigmas": 0.16345332635372928,
+              "chi2": 12.689806006260406,
+              "df": 15,
+              "pValue": 0.6262433458341095
+            },
+            {
+              "config": "16r/low",
+              "rows": 16,
+              "risk": "low",
+              "rounds": 1000000,
+              "derivedRTP": 0.99881030493439,
+              "theoreticalRTP": 0.9989999989468383,
+              "declaredRTP": 0.999,
+              "se": 0.0003320624991505113,
+              "sigmas": 0.5712599674264982,
+              "chi2": 23.22511601252081,
+              "df": 16,
+              "pValue": 0.10784786631719434
+            },
+            {
+              "config": "16r/medium",
+              "rows": 16,
+              "risk": "medium",
+              "rounds": 1000000,
+              "derivedRTP": 0.99785825631147,
+              "theoreticalRTP": 0.9989999983651733,
+              "declaredRTP": 0.999,
+              "se": 0.0014851260338187634,
+              "sigmas": 0.7687846200955175,
+              "chi2": 13.147936218093017,
+              "df": 16,
+              "pValue": 0.6619119166256022
+            },
+            {
+              "config": "16r/high",
+              "rows": 16,
+              "risk": "high",
+              "rounds": 1000000,
+              "derivedRTP": 1.00735947725986,
+              "theoreticalRTP": 0.9989999995104982,
+              "declaredRTP": 0.999,
+              "se": 0.006851153046273627,
+              "sigmas": 1.2201563288545278,
+              "chi2": 17.22009103287823,
+              "df": 16,
+              "pValue": 0.3714952189058379
+            }
+          ]
+        },
+        "dispersion": {
+          "pCeiling": 0.9999,
+          "chi2FloorRatio": 0.02,
+          "maxPValue": 0.9935098050200847,
+          "minChi2OverDf": 0.2065235978835979
+        },
+        "replay": {
+          "source": "src/sim-seeds.ts SIM_SEEDS — the seeds src/simulate.ts played — through src/pass1.ts playPass1Config, the function src/simulate.ts plays them with",
+          "mode": "full",
+          "configsReplayed": 27,
+          "roundsPerConfig": 1000000,
+          "totalRoundsReplayed": 27000000,
+          "censusMismatches": 0,
+          "derivedStatisticsCompared": 691,
+          "derivedStatisticsWithinTolerance": 691,
+          "derivedStatisticsBeyondTolerance": 0,
+          "convergencePointsReproduced": 189,
+          "tolerance": {
+            "atol": 1e-14,
+            "rtol": 1e-12,
+            "rule": "census (slot counts, failure counters), simulatedRTP and every running-RTP point exact; other derived floats |a-b| <= atol + rtol*max(|a|,|b|)"
+          }
+        }
+      },
+      "profileIds": [
+        "PLINKO-19",
+        "PLINKO-20",
+        "PLINKO-31",
+        "PLINKO-32"
+      ],
+      "profileChecks": [
+        {
+          "id": "PLINKO-19",
+          "coverage": "full"
+        },
+        {
+          "id": "PLINKO-20",
+          "coverage": "full",
+          "note": "27 configurations × 1,000,000 rounds on the pinned fresh seeds of src/sim-seeds.ts; chi-squared at the Bonferroni threshold (0.01/27) and serial independence (lag-1, runs) gated; RTP, standard error, chi-squared and its p-value re-derived in verify from the committed histograms. THE EXPERIMENT IS REPLAYED IN FULL on every run (since 2026-09-24): all 27,000,000 rounds are regenerated from the pinned seeds by src/pass1.ts playPass1Config — the per-configuration loop moved out of src/simulate.ts unchanged, so generator and replay are one function — fanned out over worker threads (src/parallel.ts, ported from LIQD Plinko; one configuration stays on one thread). The census must equal the artifact exactly (every slot count of every configuration), and so must simulatedRTP and all seven running-RTP points (IEEE sums and quotients in nonce order, no tolerance); every other derived figure it carries — rtpDiff, lag1R, lag1Z, runsP, expected counts, the pooled convergence trace, the mean RTPs and the failure counters — must equal the replay within the reproduction tolerance (1e-14 + 1e-12·max; counters exact). Measured: 27/27 configurations, 0 census mismatches, 691 derived figures compared, 691 bit-identical, 0 beyond tolerance. Until 2026-09-24 only the first 10,000 rounds of each configuration were replayed; PF_P1_REPLAY=off keeps that prefix replay for a LOCAL run only, capped at FLAG (the mutation battery uses it for mutations aimed at other steps). FAIL probed: M27b (the first configuration's two edge-slot counts swapped — invisible to every histogram check and to the old prefix replay — artifact re-pinned), M27 (one running-RTP point moved by one unit in the last place), M28 (pinned seed altered)"
+        },
+        {
+          "id": "PLINKO-31",
+          "coverage": "full"
+        },
+        {
+          "id": "PLINKO-32",
+          "coverage": "full"
+        }
+      ]
     },
     {
       "step": 20,
@@ -1291,7 +2741,7 @@
       ],
       "severity": "PASS",
       "pass": true,
-      "summary": "Pass 2: 162 seeds × 10,000 nonces. Artifact verdicts: Test A=PASS, Test B=PASS. Test A: 1 fail(s). Early-window statistical flags: 10 of 242 combinations (within expected false-positive range; threshold 13). Multi-window breakdown: 8 isolated-early (consistent with random false positives), 2 multi-window distributional variation (noise). No cherry-pick signature. See info in details.",
+      "summary": "Pass 2: 162 seeds × 10,000 nonces. Artifact verdicts: Test A=PASS, Test B=PASS. Test A: 1 fail(s). Early-window statistical flags: 10 of 242 combinations (within expected false-positive range; threshold 13). Multi-window breakdown: 8 isolated-early (consistent with random false positives), 2 multi-window distributional variation (noise). No cherry-pick signature. See info in details. Test C (served-config payout statistic, calibrated null on 10,000 fresh seeds): 1/162 epochs flagged at p ≤ 0.01 (Poisson-binomial survival 0.8037; the rule fails at ≥ 8), 0 broad, pooled z -0.554 (fails below -3.09); early windows below/above expectation 98/64 (null expects 99.9 below); power at a 10% early-window shortfall 12.7% per epoch, 30.7% for the family if 25% of epochs were picked. Replay: 162 epochs × 10,000 nonces, 8100/8100 captured bets reproduced, Tests A/B re-derived on 242 rows.",
       "failures": [],
       "details": {
         "seeds_tested": 162,
@@ -1446,8 +2896,2570 @@
           "Test A: 1 seed(s) fail full-range chi-squared at α=0.01 — within expected FWER range (2.4 expected for 242 combinations). Informational.",
           "Test B: 10 early-window statistical flag(s) within expected false-positive range (≤13 at α=0.05 across 242 combinations). Statistical power is limited: early bucket has ~50 nonces. Informational."
         ],
-        "power_note": "Test B early bucket (~50 nonces) has limited statistical power on high-row configs — pooled bins may reduce to 2–3 df. Absence of flags is not a proof of absence of cherry-picking; it means no statistically detectable pattern was found."
-      }
+        "power_note": "Test B early bucket (~50 nonces) has limited statistical power on high-row configs — pooled bins may reduce to 2–3 df. Absence of flags is not a proof of absence of cherry-picking; it means no statistically detectable pattern was found. Test C carries its own measured detection power (testC.power).",
+        "replay": {
+          "epochsReplayed": 162,
+          "noncesPerEpoch": 10000,
+          "calibrationSeeds": 10000,
+          "capturedBetsBound": 8100,
+          "capturedBetMismatches": 0,
+          "testsABRederived": {
+            "rows": 242,
+            "floatsCompared": 1452,
+            "floatsWithinTolerance": 1452,
+            "mismatches": 0,
+            "testAFails": 1,
+            "testBFlags": 10,
+            "testABinomialP": 0.9121549908099209,
+            "testBBinomialP": 0.7730031061102282
+          }
+        },
+        "testC": {
+          "rule": {
+            "alpha": 0.01,
+            "familyFail": 0.001,
+            "familyFlag": 0.01,
+            "broadP": 0.001,
+            "pooledZ": -3.09,
+            "written": "2026-09-24, before the statistic was first computed; after the capture's seeds were revealed"
+          },
+          "window": "early = nonces 0–49 (the captured nonce range; in the 2 capture-retry epochs the missed nonce is the replayed one and captured nonce 50 falls in the reference window); reference = nonces 50–9999, the served sequence cycled by position (nonce n plays position n mod 50)",
+          "null": {
+            "calibrationSeeds": 10000,
+            "label": "pf-duel-plinko-pass2-testC-null-2026-09-24",
+            "distinctServedSequences": 37,
+            "perEpochNullFlagProbability": 0.009999000099990002
+          },
+          "epochsScored": 162,
+          "flagged": 1,
+          "flagFamilySurvival": 0.8036763661476978,
+          "flagCountThatFails": 8,
+          "broad": 0,
+          "pooledZ": -0.5536520682698653,
+          "directionSplit": {
+            "earlyBelowExpectation": 98,
+            "earlyAboveExpectation": 64,
+            "belowExpectedUnderNull": 99.85800000000033,
+            "upperTailFlags": 1
+          },
+          "power": [
+            {
+              "shortfall": 0.05,
+              "perEpochPower": 0.038988888888888976,
+              "family": [
+                {
+                  "pickedFraction": 0.1,
+                  "pickedEpochs": 16,
+                  "power": 0.0012312305633903429
+                },
+                {
+                  "pickedFraction": 0.25,
+                  "pickedEpochs": 41,
+                  "power": 0.0073724804429451335
+                },
+                {
+                  "pickedFraction": 0.5,
+                  "pickedEpochs": 81,
+                  "power": 0.046308681900275143
+                }
+              ]
+            },
+            {
+              "shortfall": 0.1,
+              "perEpochPower": 0.12650925925925935,
+              "family": [
+                {
+                  "pickedFraction": 0.1,
+                  "pickedEpochs": 16,
+                  "power": 0.021027953828203
+                },
+                {
+                  "pickedFraction": 0.25,
+                  "pickedEpochs": 41,
+                  "power": 0.3069681677332962
+                },
+                {
+                  "pickedFraction": 0.5,
+                  "pickedEpochs": 81,
+                  "power": 0.8762098278750363
+                }
+              ]
+            },
+            {
+              "shortfall": 0.2,
+              "perEpochPower": 0.3146086419753092,
+              "family": [
+                {
+                  "pickedFraction": 0.1,
+                  "pickedEpochs": 16,
+                  "power": 0.3127638748344015
+                },
+                {
+                  "pickedFraction": 0.25,
+                  "pickedEpochs": 41,
+                  "power": 0.985867985045584
+                },
+                {
+                  "pickedFraction": 0.5,
+                  "pickedEpochs": 81,
+                  "power": 0.9999995044351496
+                }
+              ]
+            }
+          ],
+          "perEpoch": [
+            {
+              "epoch": "9fae5bb7897874cb",
+              "phase": "A",
+              "S": 52.137085199999966,
+              "mu": 49.95000002734369,
+              "sd": 19.042803074238634,
+              "z": 0.11485101033339959,
+              "pLower": 0.6487351264873512,
+              "pUpper": 0.35136486351364865,
+              "zRef": 0.21428524448691055,
+              "pRefLower": 0.511948805119488,
+              "flagged": false,
+              "broad": false,
+              "missedNonces": []
+            },
+            {
+              "epoch": "16a56441801bae0d",
+              "phase": "A",
+              "S": 42.876213119999974,
+              "mu": 49.950000082519466,
+              "sd": 7.959153939063253,
+              "z": -0.8887611694255076,
+              "pLower": 0.15278472152784722,
+              "pUpper": 0.8482151784821518,
+              "zRef": 1.0267354427305933,
+              "pRefLower": 0.795020497950205,
+              "flagged": false,
+              "broad": false,
+              "missedNonces": []
+            },
+            {
+              "epoch": "b8a562c6074006d8",
+              "phase": "A",
+              "S": 50.97753166,
+              "mu": 49.95000002539064,
+              "sd": 29.391689950702382,
+              "z": 0.03495993719084527,
+              "pLower": 0.6970302969703029,
+              "pUpper": 0.3030696930306969,
+              "zRef": 0.48685301695884964,
+              "pRefLower": 0.6557344265573443,
+              "flagged": false,
+              "broad": false,
+              "missedNonces": []
+            },
+            {
+              "epoch": "c610fb1e7b162b68",
+              "phase": "A",
+              "S": 51.35057046999997,
+              "mu": 49.950000082519466,
+              "sd": 7.959153939063253,
+              "z": 0.17596975736410317,
+              "pLower": 0.6418358164183582,
+              "pUpper": 0.3585641435856414,
+              "zRef": 1.025836907803076,
+              "pRefLower": 0.7944205579442056,
+              "flagged": false,
+              "broad": false,
+              "missedNonces": []
+            },
+            {
+              "epoch": "d678b2a52eb55881",
+              "phase": "A",
+              "S": 24.110821530000006,
+              "mu": 49.950000016662614,
+              "sd": 42.8370178778695,
+              "z": -0.6031974158502679,
+              "pLower": 0.08909109089091091,
+              "pUpper": 0.9111088891110889,
+              "zRef": -0.37367810693465875,
+              "pRefLower": 0.45825417458254175,
+              "flagged": false,
+              "broad": false,
+              "missedNonces": []
+            },
+            {
+              "epoch": "c88889ae43c81662",
+              "phase": "A",
+              "S": 42.624000110000004,
+              "mu": 49.950000108398406,
+              "sd": 8.610077494416693,
+              "z": -0.8508634217460915,
+              "pLower": 0.1488851114888511,
+              "pUpper": 0.8514148585141486,
+              "zRef": -0.994345219924017,
+              "pRefLower": 0.10118988101189881,
+              "flagged": false,
+              "broad": false,
+              "missedNonces": []
+            },
+            {
+              "epoch": "b4cae0cd90f988ae",
+              "phase": "A",
+              "S": 45.911824830000015,
+              "mu": 49.94999997167967,
+              "sd": 3.1504327882999403,
+              "z": -1.2817842541115634,
+              "pLower": 0.07839216078392161,
+              "pUpper": 0.9226077392260774,
+              "zRef": -0.34485473359499563,
+              "pRefLower": 0.29627037296270375,
+              "flagged": false,
+              "broad": false,
+              "missedNonces": []
+            },
+            {
+              "epoch": "73d7798f4423be01",
+              "phase": "A",
+              "S": 50.65436480999998,
+              "mu": 49.949999874023405,
+              "sd": 3.7610002246811205,
+              "z": 0.1872812799516113,
+              "pLower": 0.6435356464353564,
+              "pUpper": 0.35706429357064295,
+              "zRef": -0.8765515331498389,
+              "pRefLower": 0.1314868513148685,
+              "flagged": false,
+              "broad": false,
+              "missedNonces": []
+            },
+            {
+              "epoch": "26bd28cb59a294da",
+              "phase": "A",
+              "S": 52.16794143999997,
+              "mu": 49.949999874023405,
+              "sd": 3.7610002246811205,
+              "z": 0.5897212000737428,
+              "pLower": 0.7727227277272273,
+              "pUpper": 0.2273772622737726,
+              "zRef": 0.639247349695897,
+              "pRefLower": 0.6543345665433457,
+              "flagged": false,
+              "broad": false,
+              "missedNonces": []
+            },
+            {
+              "epoch": "2ff1de4a028b70ad",
+              "phase": "A",
+              "S": 40.810212899999975,
+              "mu": 49.950000117187464,
+              "sd": 9.1260613322175,
+              "z": -1.0015040316375623,
+              "pLower": 0.09719028097190281,
+              "pUpper": 0.9048095190480951,
+              "zRef": 0.7138976503713959,
+              "pRefLower": 0.7077292270772922,
+              "flagged": false,
+              "broad": false,
+              "missedNonces": []
+            },
+            {
+              "epoch": "ac53b27fe140bfba",
+              "phase": "A",
+              "S": 44.81430103999998,
+              "mu": 49.94999997552487,
+              "sd": 46.856902390004706,
+              "z": -0.10960389341956178,
+              "pLower": 0.5469453054694531,
+              "pUpper": 0.45435456454354567,
+              "zRef": -1.1873127255410016,
+              "pRefLower": 0.07429257074292571,
+              "flagged": false,
+              "broad": false,
+              "missedNonces": []
+            },
+            {
+              "epoch": "b5c8dc8273683f40",
+              "phase": "A",
+              "S": 39.73309777,
+              "mu": 49.95000001367192,
+              "sd": 25.98668860663118,
+              "z": -0.3931590668718295,
+              "pLower": 0.39686031396860316,
+              "pUpper": 0.6032396760323968,
+              "zRef": -2.0087768923464786,
+              "pRefLower": 0.009999000099990002,
+              "flagged": false,
+              "broad": false,
+              "missedNonces": []
+            },
+            {
+              "epoch": "cface66c8a82b4b6",
+              "phase": "A",
+              "S": 31.64830438000002,
+              "mu": 49.95000005908207,
+              "sd": 31.22149733098019,
+              "z": -0.5861889160876922,
+              "pLower": 0.1865813418658134,
+              "pUpper": 0.8138186181381862,
+              "zRef": -1.088986402604864,
+              "pRefLower": 0.11438856114388561,
+              "flagged": false,
+              "broad": false,
+              "missedNonces": []
+            },
+            {
+              "epoch": "05fa97a6ab9cd1a0",
+              "phase": "A",
+              "S": 27.01192862,
+              "mu": 49.95000005908207,
+              "sd": 31.22149733098019,
+              "z": -0.7346883846061184,
+              "pLower": 0.0817918208179182,
+              "pUpper": 0.919008099190081,
+              "zRef": -0.5804938653598215,
+              "pRefLower": 0.2588741125887411,
+              "flagged": false,
+              "broad": false,
+              "missedNonces": []
+            },
+            {
+              "epoch": "491faca4a863f3f8",
+              "phase": "A",
+              "S": 65.60652180999999,
+              "mu": 49.94999997552487,
+              "sd": 46.856902390004706,
+              "z": 0.334134802684159,
+              "pLower": 0.8727127287271272,
+              "pUpper": 0.1277872212778722,
+              "zRef": 0.4887012781052563,
+              "pRefLower": 0.720927907209279,
+              "flagged": false,
+              "broad": false,
+              "missedNonces": []
+            },
+            {
+              "epoch": "b6950a2097b2d704",
+              "phase": "A",
+              "S": 55.20053979,
+              "mu": 49.95000000830076,
+              "sd": 9.673578204190214,
+              "z": 0.5427712135954936,
+              "pLower": 0.7631236876312368,
+              "pUpper": 0.23697630236976303,
+              "zRef": 1.3627858150981844,
+              "pRefLower": 0.8921107889211078,
+              "flagged": false,
+              "broad": false,
+              "missedNonces": []
+            },
+            {
+              "epoch": "abeed9e4d1fec3d2",
+              "phase": "A",
+              "S": 39.457789980000015,
+              "mu": 49.95000008532709,
+              "sd": 9.721304490271173,
+              "z": -1.0793006345832912,
+              "pLower": 0.09829017098290171,
+              "pUpper": 0.9019098090190981,
+              "zRef": -0.9457262992058737,
+              "pRefLower": 0.16148385161483853,
+              "flagged": false,
+              "broad": false,
+              "missedNonces": []
+            },
+            {
+              "epoch": "881091a18ef06635",
+              "phase": "A",
+              "S": 48.73972187999998,
+              "mu": 49.94999994734189,
+              "sd": 2.3683912510020364,
+              "z": -0.5110127251271723,
+              "pLower": 0.29047095290470953,
+              "pUpper": 0.7105289471052895,
+              "zRef": -0.23777530781311018,
+              "pRefLower": 0.4116588341165883,
+              "flagged": false,
+              "broad": false,
+              "missedNonces": []
+            },
+            {
+              "epoch": "eb26fd9d0e96cf40",
+              "phase": "A",
+              "S": 62.92595263000004,
+              "mu": 49.95000007812501,
+              "sd": 8.841176139558053,
+              "z": 1.467672665610264,
+              "pLower": 0.9103089691030897,
+              "pUpper": 0.08999100089991001,
+              "zRef": -0.022448058204125744,
+              "pRefLower": 0.4186581341865813,
+              "flagged": false,
+              "broad": false,
+              "missedNonces": []
+            },
+            {
+              "epoch": "528442a1ce7a055f",
+              "phase": "A",
+              "S": 54.39321927,
+              "mu": 49.95000000830076,
+              "sd": 9.673578204190214,
+              "z": 0.45931496783419945,
+              "pLower": 0.7329267073292671,
+              "pUpper": 0.26717328267173285,
+              "zRef": 0.4265699089884144,
+              "pRefLower": 0.6285371462853715,
+              "flagged": false,
+              "broad": false,
+              "missedNonces": []
+            },
+            {
+              "epoch": "367177f9a78c87b3",
+              "phase": "A",
+              "S": 36.606889629999976,
+              "mu": 49.95000002734369,
+              "sd": 19.042803074238634,
+              "z": -0.7006904574565737,
+              "pLower": 0.26247375262473754,
+              "pUpper": 0.738026197380262,
+              "zRef": -0.8619977612075633,
+              "pRefLower": 0.15478452154784522,
+              "flagged": false,
+              "broad": false,
+              "missedNonces": []
+            },
+            {
+              "epoch": "1697b2b39e67a519",
+              "phase": "A",
+              "S": 50.05140277999998,
+              "mu": 49.949999999511704,
+              "sd": 3.356913748309406,
+              "z": 0.030207145041884584,
+              "pLower": 0.5372462753724627,
+              "pUpper": 0.46285371462853714,
+              "zRef": -0.15987960725854133,
+              "pRefLower": 0.37536246375362464,
+              "flagged": false,
+              "broad": false,
+              "missedNonces": []
+            },
+            {
+              "epoch": "9afd29b6c2b59ee1",
+              "phase": "A",
+              "S": 49.04472092999998,
+              "mu": 49.95000000830076,
+              "sd": 9.673578204190214,
+              "z": -0.09358264948007015,
+              "pLower": 0.521047895210479,
+              "pUpper": 0.47905209479052097,
+              "zRef": 0.847349412113993,
+              "pRefLower": 0.7683231676832317,
+              "flagged": false,
+              "broad": false,
+              "missedNonces": []
+            },
+            {
+              "epoch": "70f62f5efed2e1b3",
+              "phase": "A",
+              "S": 85.99501015999998,
+              "mu": 49.94999997552487,
+              "sd": 46.856902390004706,
+              "z": 0.7692572138990575,
+              "pLower": 0.9618038196180382,
+              "pUpper": 0.038396160383961604,
+              "zRef": 0.702783970751708,
+              "pRefLower": 0.7686231376862314,
+              "flagged": false,
+              "broad": false,
+              "missedNonces": []
+            },
+            {
+              "epoch": "4f986293933e7978",
+              "phase": "A",
+              "S": 51.05987406999999,
+              "mu": 49.949999975341804,
+              "sd": 2.2759323111429044,
+              "z": 0.4876568996469158,
+              "pLower": 0.7058294170582942,
+              "pUpper": 0.2943705629437056,
+              "zRef": -0.17991406968588566,
+              "pRefLower": 0.3735626437356264,
+              "flagged": false,
+              "broad": false,
+              "missedNonces": []
+            },
+            {
+              "epoch": "82e4d834af1dbb39",
+              "phase": "A",
+              "S": 45.51493874999999,
+              "mu": 49.95000003759768,
+              "sd": 9.189060388540653,
+              "z": -0.4826457874984145,
+              "pLower": 0.34396560343965604,
+              "pUpper": 0.6564343565643436,
+              "zRef": 0.019999455222206593,
+              "pRefLower": 0.45725427457254275,
+              "flagged": false,
+              "broad": false,
+              "missedNonces": []
+            },
+            {
+              "epoch": "1cbc7277d962dfe2",
+              "phase": "A",
+              "S": 55.19509475999998,
+              "mu": 49.949999874023405,
+              "sd": 3.7610002246811205,
+              "z": 1.3946010562712177,
+              "pLower": 0.9000099990001,
+              "pUpper": 0.10028997100289971,
+              "zRef": 0.06487938903892607,
+              "pRefLower": 0.43765623437656237,
+              "flagged": false,
+              "broad": false,
+              "missedNonces": []
+            },
+            {
+              "epoch": "a0ab2a1e5c2fa0df",
+              "phase": "A",
+              "S": 52.17566148999998,
+              "mu": 49.95000003759768,
+              "sd": 9.189060388540653,
+              "z": 0.24220772944074256,
+              "pLower": 0.6778322167783222,
+              "pUpper": 0.3223677632236776,
+              "zRef": -0.2579385881112383,
+              "pRefLower": 0.34906509349065096,
+              "flagged": false,
+              "broad": false,
+              "missedNonces": []
+            },
+            {
+              "epoch": "6a3b7362dfbe1514",
+              "phase": "A",
+              "S": 82.18902207999999,
+              "mu": 49.95000002734369,
+              "sd": 19.042803074238634,
+              "z": 1.6929767076292297,
+              "pLower": 0.933006699330067,
+              "pUpper": 0.0670932906709329,
+              "zRef": -0.17463320554563583,
+              "pRefLower": 0.36546345365463456,
+              "flagged": false,
+              "broad": false,
+              "missedNonces": []
+            },
+            {
+              "epoch": "7e147fbf387462ca",
+              "phase": "A",
+              "S": 47.43475939999999,
+              "mu": 49.95000010937502,
+              "sd": 3.2907687593510295,
+              "z": -0.7643322558680962,
+              "pLower": 0.22477752224777522,
+              "pUpper": 0.7772222777722227,
+              "zRef": 0.47731182957454144,
+              "pRefLower": 0.6004399560043996,
+              "flagged": false,
+              "broad": false,
+              "missedNonces": []
+            },
+            {
+              "epoch": "20bdacfef6222724",
+              "phase": "A",
+              "S": 73.06250607,
+              "mu": 49.95000000830076,
+              "sd": 9.673578204190214,
+              "z": 2.389240627804901,
+              "pLower": 0.9766023397660234,
+              "pUpper": 0.0235976402359764,
+              "zRef": 0.5678157497117167,
+              "pRefLower": 0.6781321867813219,
+              "flagged": false,
+              "broad": false,
+              "missedNonces": []
+            },
+            {
+              "epoch": "fed3d9a20eeef8ab",
+              "phase": "A",
+              "S": 62.97468825999998,
+              "mu": 49.949999918258655,
+              "sd": 10.470509337631613,
+              "z": 1.243940282344226,
+              "pLower": 0.9411058894110589,
+              "pUpper": 0.05909409059094091,
+              "zRef": 1.459173343432698,
+              "pRefLower": 0.921007899210079,
+              "flagged": false,
+              "broad": false,
+              "missedNonces": []
+            },
+            {
+              "epoch": "09e5276a43dffdb6",
+              "phase": "A",
+              "S": 31.692410450000008,
+              "mu": 49.95000002203369,
+              "sd": 39.80648151479021,
+              "z": -0.45865871278399795,
+              "pLower": 0.24847515248475152,
+              "pUpper": 0.7521247875212479,
+              "zRef": 0.45755030106028527,
+              "pRefLower": 0.7051294870512949,
+              "flagged": false,
+              "broad": false,
+              "missedNonces": []
+            },
+            {
+              "epoch": "4951df0287aac829",
+              "phase": "A",
+              "S": 66.88689234999995,
+              "mu": 49.950000082519466,
+              "sd": 7.959153939063253,
+              "z": 2.127976465482695,
+              "pLower": 0.9544045595440456,
+              "pUpper": 0.045795420457954206,
+              "zRef": 0.026668176644598786,
+              "pRefLower": 0.4283571642835716,
+              "flagged": false,
+              "broad": false,
+              "missedNonces": []
+            },
+            {
+              "epoch": "4e7d7e2dc4396c93",
+              "phase": "A",
+              "S": 37.93166889999999,
+              "mu": 49.950000016662614,
+              "sd": 42.8370178778695,
+              "z": -0.28055947197182335,
+              "pLower": 0.42425757424257576,
+              "pUpper": 0.5776422357764224,
+              "zRef": 0.8231365990766818,
+              "pRefLower": 0.8462153784621538,
+              "flagged": false,
+              "broad": false,
+              "missedNonces": []
+            },
+            {
+              "epoch": "b822fcd212733488",
+              "phase": "A",
+              "S": 47.9314045,
+              "mu": 49.950000026367206,
+              "sd": 2.9258103608415165,
+              "z": -0.6899269868559158,
+              "pLower": 0.2460753924607539,
+              "pUpper": 0.7578242175782421,
+              "zRef": -1.112044694372079,
+              "pRefLower": 0.1436856314368563,
+              "flagged": false,
+              "broad": false,
+              "missedNonces": []
+            },
+            {
+              "epoch": "6fa76cc680e6cf10",
+              "phase": "A",
+              "S": 31.25437946000001,
+              "mu": 49.950000057251,
+              "sd": 34.55391182974198,
+              "z": -0.5410565579194104,
+              "pLower": 0.18898110188981102,
+              "pUpper": 0.8118188181181882,
+              "zRef": -1.45973845795449,
+              "pRefLower": 0.05299470052994701,
+              "flagged": false,
+              "broad": false,
+              "missedNonces": []
+            },
+            {
+              "epoch": "cb1f25c4ec8e205d",
+              "phase": "A",
+              "S": 51.390638399999965,
+              "mu": 49.950000117187464,
+              "sd": 9.1260613322175,
+              "z": 0.15785980724528467,
+              "pLower": 0.681031896810319,
+              "pUpper": 0.31996800319968005,
+              "zRef": 0.7968654878948856,
+              "pRefLower": 0.7308269173082692,
+              "flagged": false,
+              "broad": false,
+              "missedNonces": []
+            },
+            {
+              "epoch": "f8adc54f337d8592",
+              "phase": "A",
+              "S": 54.59824729999999,
+              "mu": 49.949999918258655,
+              "sd": 10.470509337631613,
+              "z": 0.4439370838470356,
+              "pLower": 0.7806219378062194,
+              "pUpper": 0.21947805219478053,
+              "zRef": 2.537360340441811,
+              "pRefLower": 0.9904009599040096,
+              "flagged": false,
+              "broad": false,
+              "missedNonces": []
+            },
+            {
+              "epoch": "b0abe9d94f55950d",
+              "phase": "A",
+              "S": 19.74623755999999,
+              "mu": 49.95000002539064,
+              "sd": 29.391689950702382,
+              "z": -1.027629323664285,
+              "pLower": 0.0027997200279972004,
+              "pUpper": 0.9973002699730027,
+              "zRef": 0.2788589457671971,
+              "pRefLower": 0.5808419158084192,
+              "flagged": true,
+              "broad": false,
+              "missedNonces": []
+            },
+            {
+              "epoch": "9a06ac89104f6b41",
+              "phase": "A",
+              "S": 53.88864404000001,
+              "mu": 49.95000008532709,
+              "sd": 9.721304490271173,
+              "z": 0.405155908717252,
+              "pLower": 0.7153284671532847,
+              "pUpper": 0.28477152284771523,
+              "zRef": -0.6962641777527904,
+              "pRefLower": 0.23067693230676933,
+              "flagged": false,
+              "broad": false,
+              "missedNonces": []
+            },
+            {
+              "epoch": "08ed2ded5c609d5b",
+              "phase": "A",
+              "S": 40.87299470999999,
+              "mu": 49.949999918258655,
+              "sd": 10.470509337631613,
+              "z": -0.8669115241257064,
+              "pLower": 0.12478752124787522,
+              "pUpper": 0.8759124087591241,
+              "zRef": -0.44849338552053364,
+              "pRefLower": 0.35536446355364465,
+              "flagged": false,
+              "broad": false,
+              "missedNonces": []
+            },
+            {
+              "epoch": "bd1ff1212a9a5ffc",
+              "phase": "A",
+              "S": 45.012558920000004,
+              "mu": 49.95000010937502,
+              "sd": 3.2907687593510295,
+              "z": -1.5003914132054434,
+              "pLower": 0.0430956904309569,
+              "pUpper": 0.9576042395760423,
+              "zRef": 0.9490865584064104,
+              "pRefLower": 0.7585241475852414,
+              "flagged": false,
+              "broad": false,
+              "missedNonces": []
+            },
+            {
+              "epoch": "2363f66cb13a6a07",
+              "phase": "A",
+              "S": 51.86522623000001,
+              "mu": 49.94999997167967,
+              "sd": 3.1504327882999403,
+              "z": 0.607924811293579,
+              "pLower": 0.7615238476152385,
+              "pUpper": 0.2390760923907609,
+              "zRef": -1.0328081297423573,
+              "pRefLower": 0.11078892110788921,
+              "flagged": false,
+              "broad": false,
+              "missedNonces": []
+            },
+            {
+              "epoch": "56eebdce9acc0e19",
+              "phase": "A",
+              "S": 45.91324009999999,
+              "mu": 49.950000026367206,
+              "sd": 2.9258103608415165,
+              "z": -1.3797066209055913,
+              "pLower": 0.0496950304969503,
+              "pUpper": 0.9514048595140486,
+              "zRef": -0.8113270261940239,
+              "pRefLower": 0.22327767223277672,
+              "flagged": false,
+              "broad": false,
+              "missedNonces": []
+            },
+            {
+              "epoch": "2c16421e569b99e4",
+              "phase": "A",
+              "S": 60.19882470000007,
+              "mu": 49.95000007812501,
+              "sd": 8.841176139558053,
+              "z": 1.159215070494837,
+              "pLower": 0.8682131786821318,
+              "pUpper": 0.13188681131886812,
+              "zRef": -0.5294148421719804,
+              "pRefLower": 0.24017598240175983,
+              "flagged": false,
+              "broad": false,
+              "missedNonces": []
+            },
+            {
+              "epoch": "5a3eecab696a3245",
+              "phase": "A",
+              "S": 38.45053585000001,
+              "mu": 49.95000003759768,
+              "sd": 9.189060388540653,
+              "z": -1.251429819956156,
+              "pLower": 0.047595240475952406,
+              "pUpper": 0.9525047495250475,
+              "zRef": 1.340399784637024,
+              "pRefLower": 0.8797120287971203,
+              "flagged": false,
+              "broad": false,
+              "missedNonces": []
+            },
+            {
+              "epoch": "3a37ad7162b90f0d",
+              "phase": "A",
+              "S": 50.556109049999975,
+              "mu": 49.94999994734189,
+              "sd": 2.3683912510020364,
+              "z": 0.255915952400876,
+              "pLower": 0.6439356064393561,
+              "pUpper": 0.35626437356264373,
+              "zRef": 0.3844148467019698,
+              "pRefLower": 0.6498350164983502,
+              "flagged": false,
+              "broad": false,
+              "missedNonces": []
+            },
+            {
+              "epoch": "f58131b1c204a22d",
+              "phase": "A",
+              "S": 42.91784283999999,
+              "mu": 49.95000002539064,
+              "sd": 29.391689950702382,
+              "z": -0.23925664693610454,
+              "pLower": 0.48735126487351266,
+              "pUpper": 0.5130486951304869,
+              "zRef": 0.07912632300316551,
+              "pRefLower": 0.4981501849815019,
+              "flagged": false,
+              "broad": false,
+              "missedNonces": []
+            },
+            {
+              "epoch": "7946ce0012433100",
+              "phase": "A",
+              "S": 50.95975061999999,
+              "mu": 49.94999994734189,
+              "sd": 2.3683912510020364,
+              "z": 0.42634453755513896,
+              "pLower": 0.7130286971302869,
+              "pUpper": 0.28787121287871215,
+              "zRef": 0.5897980110604631,
+              "pRefLower": 0.7223277672232776,
+              "flagged": false,
+              "broad": false,
+              "missedNonces": []
+            },
+            {
+              "epoch": "ab15d706a4bce699",
+              "phase": "A",
+              "S": 51.96869449999999,
+              "mu": 49.949999999511704,
+              "sd": 3.356913748309406,
+              "z": 0.6013542949993675,
+              "pLower": 0.7434256574342566,
+              "pUpper": 0.2566743325667433,
+              "zRef": -1.0655220952756155,
+              "pRefLower": 0.10938906109389061,
+              "flagged": false,
+              "broad": false,
+              "missedNonces": []
+            },
+            {
+              "epoch": "00f28fa3606fcc77",
+              "phase": "A",
+              "S": 45.71903403999997,
+              "mu": 49.95000008984372,
+              "sd": 3.982264072977036,
+              "z": -1.062452407050141,
+              "pLower": 0.1294870512948705,
+              "pUpper": 0.8715128487151285,
+              "zRef": 0.2650771319829198,
+              "pRefLower": 0.5186481351864813,
+              "flagged": false,
+              "broad": false,
+              "missedNonces": []
+            },
+            {
+              "epoch": "43ce5f59bedeaeb5",
+              "phase": "A",
+              "S": 50.85805635999998,
+              "mu": 49.949999975341804,
+              "sd": 2.2759323111429044,
+              "z": 0.39898215786662633,
+              "pLower": 0.6614338566143385,
+              "pUpper": 0.33906609339066096,
+              "zRef": -0.8556574534322358,
+              "pRefLower": 0.1601839816018398,
+              "flagged": false,
+              "broad": false,
+              "missedNonces": []
+            },
+            {
+              "epoch": "2265dfd2dbb89005",
+              "phase": "A",
+              "S": 60.45110491999997,
+              "mu": 49.95000003759768,
+              "sd": 9.189060388540653,
+              "z": 1.1427833138954924,
+              "pLower": 0.8899110088991101,
+              "pUpper": 0.11018898110188981,
+              "zRef": 0.09863178423649721,
+              "pRefLower": 0.48865113488651135,
+              "flagged": false,
+              "broad": false,
+              "missedNonces": []
+            },
+            {
+              "epoch": "4a5a254e8b30b8ea",
+              "phase": "A",
+              "S": 43.96860567999998,
+              "mu": 49.95000001367192,
+              "sd": 25.98668860663118,
+              "z": -0.23017147064076596,
+              "pLower": 0.5353464653534646,
+              "pUpper": 0.4647535246475352,
+              "zRef": -0.08340460305100302,
+              "pRefLower": 0.39116088391160886,
+              "flagged": false,
+              "broad": false,
+              "missedNonces": []
+            },
+            {
+              "epoch": "f97d9133fae80b00",
+              "phase": "A",
+              "S": 45.700998909999996,
+              "mu": 49.950000082519466,
+              "sd": 7.959153939063253,
+              "z": -0.5338508596580246,
+              "pLower": 0.3100689931006899,
+              "pUpper": 0.69003099690031,
+              "zRef": -1.4002022675713484,
+              "pRefLower": 0.05169483051694831,
+              "flagged": false,
+              "broad": false,
+              "missedNonces": []
+            },
+            {
+              "epoch": "e7defafcdd09f283",
+              "phase": "A",
+              "S": 53.49026057000001,
+              "mu": 49.95000010937502,
+              "sd": 3.2907687593510295,
+              "z": 1.0758156283588778,
+              "pLower": 0.8611138886111389,
+              "pUpper": 0.13908609139086092,
+              "zRef": 1.5447836787612834,
+              "pRefLower": 0.9011098890110989,
+              "flagged": false,
+              "broad": false,
+              "missedNonces": []
+            },
+            {
+              "epoch": "e88abd476a81a97a",
+              "phase": "A",
+              "S": 49.75603480999996,
+              "mu": 49.95000008984372,
+              "sd": 3.982264072977036,
+              "z": -0.048707287183683896,
+              "pLower": 0.5213478652134786,
+              "pUpper": 0.47925207479252074,
+              "zRef": 1.7849687147824447,
+              "pRefLower": 0.9356064393560644,
+              "flagged": false,
+              "broad": false,
+              "missedNonces": []
+            },
+            {
+              "epoch": "62dbae1ba741a656",
+              "phase": "A",
+              "S": 42.15338800999996,
+              "mu": 49.95000002539064,
+              "sd": 20.989767283786577,
+              "z": -0.37144823522713055,
+              "pLower": 0.4560543945605439,
+              "pUpper": 0.5441455854414559,
+              "zRef": -1.1250071140095856,
+              "pRefLower": 0.10518948105189481,
+              "flagged": false,
+              "broad": false,
+              "missedNonces": []
+            },
+            {
+              "epoch": "55c880df4897757e",
+              "phase": "A",
+              "S": 42.69128345999997,
+              "mu": 49.95000008984372,
+              "sd": 3.982264072977036,
+              "z": -1.8227612475777681,
+              "pLower": 0.012998700129987,
+              "pUpper": 0.9872012798720128,
+              "zRef": 0.2848393160166687,
+              "pRefLower": 0.5264473552644735,
+              "flagged": false,
+              "broad": false,
+              "missedNonces": []
+            },
+            {
+              "epoch": "78d9c3b0d87b1eb9",
+              "phase": "A",
+              "S": 47.77482879000002,
+              "mu": 49.95000005908207,
+              "sd": 31.22149733098019,
+              "z": -0.0696690247114987,
+              "pLower": 0.6014398560143985,
+              "pUpper": 0.39866013398660133,
+              "zRef": 0.6930259261532844,
+              "pRefLower": 0.7364263573642635,
+              "flagged": false,
+              "broad": false,
+              "missedNonces": []
+            },
+            {
+              "epoch": "6a4a4aff75cfdf36",
+              "phase": "A",
+              "S": 50.05155707,
+              "mu": 49.94999994734189,
+              "sd": 2.3683912510020364,
+              "z": 0.042880213569082774,
+              "pLower": 0.5553444655534446,
+              "pUpper": 0.44495550444955506,
+              "zRef": 0.9461982060756695,
+              "pRefLower": 0.8248175182481752,
+              "flagged": false,
+              "broad": false,
+              "missedNonces": [
+                20
+              ]
+            },
+            {
+              "epoch": "d6ffac01175c926a",
+              "phase": "A",
+              "S": 45.815438990000004,
+              "mu": 49.95000008532709,
+              "sd": 9.721304490271173,
+              "z": -0.42530928842573,
+              "pLower": 0.3511648835116488,
+              "pUpper": 0.6491350864913509,
+              "zRef": 0.09406714423124346,
+              "pRefLower": 0.525947405259474,
+              "flagged": false,
+              "broad": false,
+              "missedNonces": []
+            },
+            {
+              "epoch": "141e235b9b8ac31e",
+              "phase": "A",
+              "S": 35.01601586,
+              "mu": 49.950000036163296,
+              "sd": 11.123634200549708,
+              "z": -1.3425454223787119,
+              "pLower": 0.045295470452954706,
+              "pUpper": 0.954904509549045,
+              "zRef": 1.5341146534116876,
+              "pRefLower": 0.9467053294670533,
+              "flagged": false,
+              "broad": false,
+              "missedNonces": []
+            },
+            {
+              "epoch": "7160a664030d1cd4",
+              "phase": "A",
+              "S": 47.226211600000006,
+              "mu": 49.950000036163296,
+              "sd": 11.123634200549708,
+              "z": -0.24486497731368093,
+              "pLower": 0.44165583441655837,
+              "pUpper": 0.5584441555844416,
+              "zRef": 0.6826786612796494,
+              "pRefLower": 0.7892210778922107,
+              "flagged": false,
+              "broad": false,
+              "missedNonces": []
+            },
+            {
+              "epoch": "0ebf7eea1e92f239",
+              "phase": "A",
+              "S": 43.088872550000005,
+              "mu": 49.950000036163296,
+              "sd": 11.123634200549708,
+              "z": -0.616806284930174,
+              "pLower": 0.2695730426957304,
+              "pUpper": 0.7306269373062694,
+              "zRef": -1.114725860130035,
+              "pRefLower": 0.14358564143585642,
+              "flagged": false,
+              "broad": false,
+              "missedNonces": []
+            },
+            {
+              "epoch": "f0234fb4dd1adced",
+              "phase": "A",
+              "S": 50.05047712000001,
+              "mu": 49.950000026367206,
+              "sd": 2.9258103608415165,
+              "z": 0.03434162889624373,
+              "pLower": 0.5752424757524247,
+              "pUpper": 0.42685731426857315,
+              "zRef": -2.5202835307174793,
+              "pRefLower": 0.005599440055994401,
+              "flagged": false,
+              "broad": false,
+              "missedNonces": []
+            },
+            {
+              "epoch": "87a810ea7d4c5e6f",
+              "phase": "A",
+              "S": 53.649766569999976,
+              "mu": 49.95000001367192,
+              "sd": 25.98668860663118,
+              "z": 0.1423716046446936,
+              "pLower": 0.7645235476452354,
+              "pUpper": 0.23557644235576441,
+              "zRef": 1.5968602858239593,
+              "pRefLower": 0.9064093590640936,
+              "flagged": false,
+              "broad": false,
+              "missedNonces": []
+            },
+            {
+              "epoch": "3ef02dd0d5b20394",
+              "phase": "A",
+              "S": 40.756367629999986,
+              "mu": 49.950000016662614,
+              "sd": 42.8370178778695,
+              "z": -0.2146188703628749,
+              "pLower": 0.48975102489751027,
+              "pUpper": 0.5108489151084892,
+              "zRef": -0.2087383759840932,
+              "pRefLower": 0.5262473752624738,
+              "flagged": false,
+              "broad": false,
+              "missedNonces": []
+            },
+            {
+              "epoch": "4b0c53ce52084127",
+              "phase": "A",
+              "S": 50.85868347999999,
+              "mu": 49.949999999511704,
+              "sd": 3.356913748309406,
+              "z": 0.2706901483381611,
+              "pLower": 0.6332366763323668,
+              "pUpper": 0.36706329367063295,
+              "zRef": 0.658395004996588,
+              "pRefLower": 0.691030896910309,
+              "flagged": false,
+              "broad": false,
+              "missedNonces": []
+            },
+            {
+              "epoch": "6c54917493ef605d",
+              "phase": "A",
+              "S": 32.270536349999986,
+              "mu": 49.95000002539064,
+              "sd": 20.989767283786577,
+              "z": -0.8422896469675039,
+              "pLower": 0.12918708129187081,
+              "pUpper": 0.8716128387161284,
+              "zRef": -1.0384992148186418,
+              "pRefLower": 0.12468753124687532,
+              "flagged": false,
+              "broad": false,
+              "missedNonces": []
+            },
+            {
+              "epoch": "3c77e5033d862fd7",
+              "phase": "A",
+              "S": 47.92992700000001,
+              "mu": 49.94999997167967,
+              "sd": 3.1504327882999403,
+              "z": -0.6412049097450321,
+              "pLower": 0.2625737426257374,
+              "pUpper": 0.7378262173782622,
+              "zRef": -1.6231312173924266,
+              "pRefLower": 0.0347965203479652,
+              "flagged": false,
+              "broad": false,
+              "missedNonces": []
+            },
+            {
+              "epoch": "9108a35e11af035b",
+              "phase": "A",
+              "S": 50.760277080000016,
+              "mu": 49.95000008532709,
+              "sd": 9.721304490271173,
+              "z": 0.08335064450288841,
+              "pLower": 0.5906409359064093,
+              "pUpper": 0.40975902409759024,
+              "zRef": -1.1083549967388695,
+              "pRefLower": 0.12198780121987801,
+              "flagged": false,
+              "broad": false,
+              "missedNonces": []
+            },
+            {
+              "epoch": "a3030c6ce5edbcdd",
+              "phase": "A",
+              "S": 46.26017073000001,
+              "mu": 49.950000108398406,
+              "sd": 8.610077494416693,
+              "z": -0.428547754743335,
+              "pLower": 0.36926307369263073,
+              "pUpper": 0.6312368763123688,
+              "zRef": 0.035160575703685054,
+              "pRefLower": 0.39706029397060294,
+              "flagged": false,
+              "broad": false,
+              "missedNonces": []
+            },
+            {
+              "epoch": "c79c941377e09fb0",
+              "phase": "A",
+              "S": 44.644094910000014,
+              "mu": 49.950000108398406,
+              "sd": 8.610077494416693,
+              "z": -0.6162436054540821,
+              "pLower": 0.2723727627237276,
+              "pUpper": 0.7286271372862714,
+              "zRef": -0.7315634546069583,
+              "pRefLower": 0.1553844615538446,
+              "flagged": false,
+              "broad": false,
+              "missedNonces": []
+            },
+            {
+              "epoch": "973f7f090addec90",
+              "phase": "A",
+              "S": 50.767789289999996,
+              "mu": 49.950000029296866,
+              "sd": 2.7685622676993447,
+              "z": 0.2953840952917077,
+              "pLower": 0.6559344065593441,
+              "pUpper": 0.34426557344265574,
+              "zRef": -0.895697563764365,
+              "pRefLower": 0.12148785121487851,
+              "flagged": false,
+              "broad": false,
+              "missedNonces": []
+            },
+            {
+              "epoch": "54aa5f6b9439b96a",
+              "phase": "A",
+              "S": 80.93862179999998,
+              "mu": 49.949999918258655,
+              "sd": 10.470509337631613,
+              "z": 2.9596097842505555,
+              "pLower": 0.9764023597640236,
+              "pUpper": 0.023697630236976304,
+              "zRef": -0.8003731741132801,
+              "pRefLower": 0.22997700229977003,
+              "flagged": false,
+              "broad": false,
+              "missedNonces": []
+            },
+            {
+              "epoch": "a5b4c1ade90b3dbb",
+              "phase": "A",
+              "S": 78.48627219999996,
+              "mu": 49.950000016662614,
+              "sd": 42.8370178778695,
+              "z": 0.6661591678649457,
+              "pLower": 0.9057094290570943,
+              "pUpper": 0.0943905609439056,
+              "zRef": -0.1641645832646049,
+              "pRefLower": 0.545945405459454,
+              "flagged": false,
+              "broad": false,
+              "missedNonces": []
+            },
+            {
+              "epoch": "a4ee303adbf8c12d",
+              "phase": "A",
+              "S": 40.529872660000024,
+              "mu": 49.950000057251,
+              "sd": 34.55391182974198,
+              "z": -0.2726211562866433,
+              "pLower": 0.44225577442255776,
+              "pUpper": 0.5598440155984401,
+              "zRef": -1.820459855482234,
+              "pRefLower": 0.017298270172982702,
+              "flagged": false,
+              "broad": false,
+              "missedNonces": []
+            },
+            {
+              "epoch": "b4a8e144c37a7506",
+              "phase": "A",
+              "S": 39.16132244000002,
+              "mu": 49.95000002203369,
+              "sd": 39.80648151479021,
+              "z": -0.27102816354228915,
+              "pLower": 0.42805719428057193,
+              "pUpper": 0.5723427657234277,
+              "zRef": 0.9155284051233837,
+              "pRefLower": 0.8226177382261773,
+              "flagged": false,
+              "broad": false,
+              "missedNonces": []
+            },
+            {
+              "epoch": "da25b0c1151f98a9",
+              "phase": "A",
+              "S": 51.27243928,
+              "mu": 49.950000029296866,
+              "sd": 2.7685622676993447,
+              "z": 0.47766281659327514,
+              "pLower": 0.7253274672532747,
+              "pUpper": 0.27487251274872515,
+              "zRef": 0.08632854509798837,
+              "pRefLower": 0.42575742425757424,
+              "flagged": false,
+              "broad": false,
+              "missedNonces": []
+            },
+            {
+              "epoch": "e27d82f71cd25ef2",
+              "phase": "A",
+              "S": 49.758489299999994,
+              "mu": 49.950000029296866,
+              "sd": 2.7685622676993447,
+              "z": -0.0691733509234079,
+              "pLower": 0.4914508549145086,
+              "pUpper": 0.5090490950904909,
+              "zRef": 0.3705992746609855,
+              "pRefLower": 0.53994600539946,
+              "flagged": false,
+              "broad": false,
+              "missedNonces": []
+            },
+            {
+              "epoch": "2079f60c6fc7be5d",
+              "phase": "A",
+              "S": 36.30435336999997,
+              "mu": 49.95000002734369,
+              "sd": 19.042803074238634,
+              "z": -0.7165776279965703,
+              "pLower": 0.2552744725527447,
+              "pUpper": 0.7449255074492551,
+              "zRef": 1.6400692855734047,
+              "pRefLower": 0.9198080191980802,
+              "flagged": false,
+              "broad": false,
+              "missedNonces": []
+            },
+            {
+              "epoch": "a3429e224dacb88b",
+              "phase": "A",
+              "S": 58.490347019999994,
+              "mu": 49.95000002539064,
+              "sd": 20.989767283786577,
+              "z": 0.40688145224012523,
+              "pLower": 0.781021897810219,
+              "pUpper": 0.21907809219078092,
+              "zRef": 0.2611627433728443,
+              "pRefLower": 0.5578442155784421,
+              "flagged": false,
+              "broad": false,
+              "missedNonces": []
+            },
+            {
+              "epoch": "aa5a0ebec7b50152",
+              "phase": "A",
+              "S": 44.337021399999976,
+              "mu": 49.950000117187464,
+              "sd": 9.1260613322175,
+              "z": -0.6150494186766129,
+              "pLower": 0.28357164283571645,
+              "pUpper": 0.7185281471852815,
+              "zRef": 0.7264210989741616,
+              "pRefLower": 0.7107289271072893,
+              "flagged": false,
+              "broad": false,
+              "missedNonces": []
+            },
+            {
+              "epoch": "ece673adffdea12c",
+              "phase": "A",
+              "S": 86.50405635999998,
+              "mu": 49.950000057251,
+              "sd": 34.55391182974198,
+              "z": 1.0578847478358555,
+              "pLower": 0.9455054494550545,
+              "pUpper": 0.054594540545945404,
+              "zRef": -0.6373598579977481,
+              "pRefLower": 0.2612738726127387,
+              "flagged": false,
+              "broad": false,
+              "missedNonces": []
+            },
+            {
+              "epoch": "e687319e58ebf551",
+              "phase": "A",
+              "S": 49.14260606999998,
+              "mu": 49.949999975341804,
+              "sd": 2.2759323111429044,
+              "z": -0.3547530396175873,
+              "pLower": 0.36806319368063195,
+              "pUpper": 0.6328367163283671,
+              "zRef": 0.6624079159147572,
+              "pRefLower": 0.6903309669033096,
+              "flagged": false,
+              "broad": false,
+              "missedNonces": []
+            },
+            {
+              "epoch": "676a3583aeff04b6",
+              "phase": "A",
+              "S": 46.930134289999984,
+              "mu": 49.95000010937502,
+              "sd": 3.2907687593510295,
+              "z": -0.9176779166855166,
+              "pLower": 0.16978302169783022,
+              "pUpper": 0.8321167883211679,
+              "zRef": -0.3944930831444321,
+              "pRefLower": 0.2742725727427257,
+              "flagged": false,
+              "broad": false,
+              "missedNonces": []
+            },
+            {
+              "epoch": "3d527dabd082f8f2",
+              "phase": "A",
+              "S": 45.113483919999965,
+              "mu": 49.95000008984372,
+              "sd": 3.982264072977036,
+              "z": -1.2145141761601215,
+              "pLower": 0.08659134086591341,
+              "pUpper": 0.9138086191380862,
+              "zRef": 0.06386217318117293,
+              "pRefLower": 0.44465553444655537,
+              "flagged": false,
+              "broad": false,
+              "missedNonces": []
+            },
+            {
+              "epoch": "fc1030198e165130",
+              "phase": "A",
+              "S": 39.733097839999985,
+              "mu": 49.95000002539064,
+              "sd": 20.989767283786577,
+              "z": -0.48675633451556394,
+              "pLower": 0.3755624437556244,
+              "pUpper": 0.6257374262573743,
+              "zRef": 0.037059607233803124,
+              "pRefLower": 0.47015298470152983,
+              "flagged": false,
+              "broad": false,
+              "missedNonces": []
+            },
+            {
+              "epoch": "ec488374e9c0babe",
+              "phase": "A",
+              "S": 115.87139433000002,
+              "mu": 49.95000001367192,
+              "sd": 25.98668860663118,
+              "z": 2.5367369930890904,
+              "pLower": 0.940905909409059,
+              "pUpper": 0.059194080591940805,
+              "zRef": 2.183082366715236,
+              "pRefLower": 0.9655034496550345,
+              "flagged": false,
+              "broad": false,
+              "missedNonces": []
+            },
+            {
+              "epoch": "4403b27af945d239",
+              "phase": "A",
+              "S": 49.44594229,
+              "mu": 49.949999999511704,
+              "sd": 3.356913748309406,
+              "z": -0.1501550970040732,
+              "pLower": 0.46955304469553044,
+              "pUpper": 0.531046895310469,
+              "zRef": -0.04480975151700522,
+              "pRefLower": 0.42305769423057693,
+              "flagged": false,
+              "broad": false,
+              "missedNonces": []
+            },
+            {
+              "epoch": "209fbb48d5f48481",
+              "phase": "A",
+              "S": 55.497810099999974,
+              "mu": 49.949999874023405,
+              "sd": 3.7610002246811205,
+              "z": 1.4750890440180564,
+              "pLower": 0.9083091690830917,
+              "pUpper": 0.0917908209179082,
+              "zRef": 0.3235351543488051,
+              "pRefLower": 0.5395460453954605,
+              "flagged": false,
+              "broad": false,
+              "missedNonces": []
+            },
+            {
+              "epoch": "4aaeafe82e9efe99",
+              "phase": "A",
+              "S": 49.84896793999998,
+              "mu": 49.949999975341804,
+              "sd": 2.2759323111429044,
+              "z": -0.04439149391533902,
+              "pLower": 0.48335166483351666,
+              "pUpper": 0.5189481051894811,
+              "zRef": 0.0180944595151067,
+              "pRefLower": 0.44445555444455553,
+              "flagged": false,
+              "broad": false,
+              "missedNonces": []
+            },
+            {
+              "epoch": "4e7f088667f778e6",
+              "phase": "A",
+              "S": 52.98824925,
+              "mu": 49.950000029296866,
+              "sd": 2.7685622676993447,
+              "z": 1.0974104704633931,
+              "pLower": 0.8847115288471152,
+              "pUpper": 0.11558844115588442,
+              "zRef": 1.6291432331095892,
+              "pRefLower": 0.9104089591040896,
+              "flagged": false,
+              "broad": false,
+              "missedNonces": []
+            },
+            {
+              "epoch": "29ce5ad91bd45342",
+              "phase": "A",
+              "S": 35.62872893000001,
+              "mu": 49.95000002203369,
+              "sd": 39.80648151479021,
+              "z": -0.35977234226824534,
+              "pLower": 0.3427657234276572,
+              "pUpper": 0.6574342565743425,
+              "zRef": -0.4442064310803702,
+              "pRefLower": 0.36746325367463256,
+              "flagged": false,
+              "broad": false,
+              "missedNonces": []
+            },
+            {
+              "epoch": "a238da33084e5de4",
+              "phase": "A",
+              "S": 39.492475119999995,
+              "mu": 49.95000002539064,
+              "sd": 29.391689950702382,
+              "z": -0.3557986942203962,
+              "pLower": 0.3835616438356164,
+              "pUpper": 0.6171382861713829,
+              "zRef": -0.519585582126947,
+              "pRefLower": 0.26917308269173085,
+              "flagged": false,
+              "broad": false,
+              "missedNonces": []
+            },
+            {
+              "epoch": "12e8fdc4c40f2011",
+              "phase": "A",
+              "S": 39.812357370000015,
+              "mu": 49.95000005908207,
+              "sd": 31.22149733098019,
+              "z": -0.3247007208402772,
+              "pLower": 0.41815818418158185,
+              "pUpper": 0.5827417258274172,
+              "zRef": -0.790344295295478,
+              "pRefLower": 0.1927807219278072,
+              "flagged": false,
+              "broad": false,
+              "missedNonces": []
+            },
+            {
+              "epoch": "397255ffc087cc00",
+              "phase": "A",
+              "S": 57.115460970000036,
+              "mu": 49.950000036163296,
+              "sd": 11.123634200549708,
+              "z": 0.6441654592959051,
+              "pLower": 0.785021497850215,
+              "pUpper": 0.21507849215078492,
+              "zRef": -0.5083027956504922,
+              "pRefLower": 0.33386661333866613,
+              "flagged": false,
+              "broad": false,
+              "missedNonces": []
+            },
+            {
+              "epoch": "f739d077bd2fcaab",
+              "phase": "A",
+              "S": 48.93897811000002,
+              "mu": 49.94999997167967,
+              "sd": 3.1504327882999403,
+              "z": -0.3209152296263459,
+              "pLower": 0.41715828417158285,
+              "pUpper": 0.583041695830417,
+              "zRef": -0.7898675027977022,
+              "pRefLower": 0.16528347165283472,
+              "flagged": false,
+              "broad": false,
+              "missedNonces": []
+            },
+            {
+              "epoch": "8b97dd2341edd3c2",
+              "phase": "A",
+              "S": 31.69241045000001,
+              "mu": 49.95000002203369,
+              "sd": 39.80648151479021,
+              "z": -0.45865871278399784,
+              "pLower": 0.24887511248875113,
+              "pUpper": 0.7516248375162484,
+              "zRef": -1.681717912590008,
+              "pRefLower": 0.026797320267973202,
+              "flagged": false,
+              "broad": false,
+              "missedNonces": []
+            },
+            {
+              "epoch": "6743e9cf95ba066a",
+              "phase": "A",
+              "S": 85.65201892000003,
+              "mu": 49.95000007812501,
+              "sd": 8.841176139558053,
+              "z": 4.038152648280987,
+              "pLower": 0.9973002699730027,
+              "pUpper": 0.0027997200279972004,
+              "zRef": -2.016301435325803,
+              "pRefLower": 0.0117988201179882,
+              "flagged": false,
+              "broad": false,
+              "missedNonces": []
+            },
+            {
+              "epoch": "7a4ea216bc1d2546",
+              "phase": "A",
+              "S": 34.115391309999985,
+              "mu": 49.94999997552487,
+              "sd": 46.856902390004706,
+              "z": -0.33793545577828565,
+              "pLower": 0.23777622237776222,
+              "pUpper": 0.7654234576542346,
+              "zRef": -1.01537470014272,
+              "pRefLower": 0.1316868313168683,
+              "flagged": false,
+              "broad": false,
+              "missedNonces": []
+            },
+            {
+              "epoch": "c674f218354aa57b",
+              "phase": "A",
+              "S": 67.67317542000004,
+              "mu": 49.950000108398406,
+              "sd": 8.610077494416693,
+              "z": 2.058422275884791,
+              "pLower": 0.9379062093790621,
+              "pUpper": 0.062193780621937804,
+              "zRef": 0.22143626357791352,
+              "pRefLower": 0.47225277472252775,
+              "flagged": false,
+              "broad": false,
+              "missedNonces": []
+            },
+            {
+              "epoch": "f8435b8fe5f97d8f",
+              "phase": "A",
+              "S": 45.747744829999974,
+              "mu": 49.950000117187464,
+              "sd": 9.1260613322175,
+              "z": -0.4604675702049445,
+              "pLower": 0.38096190380961903,
+              "pUpper": 0.6196380361963804,
+              "zRef": -0.9086715020867938,
+              "pRefLower": 0.14428557144285573,
+              "flagged": false,
+              "broad": false,
+              "missedNonces": []
+            },
+            {
+              "epoch": "a3e9b3d0d3bd81f4",
+              "phase": "A",
+              "S": 47.12413873999999,
+              "mu": 49.950000026367206,
+              "sd": 2.9258103608415165,
+              "z": -0.9658388404757869,
+              "pLower": 0.1444855514448555,
+              "pUpper": 0.8598140185981402,
+              "zRef": -1.7403734812111653,
+              "pRefLower": 0.04179582041795821,
+              "flagged": false,
+              "broad": false,
+              "missedNonces": []
+            },
+            {
+              "epoch": "3351b857b50e533a",
+              "phase": "A",
+              "S": 41.94136074000002,
+              "mu": 49.950000057251,
+              "sd": 34.55391182974198,
+              "z": -0.23177229127376586,
+              "pLower": 0.47935206479352066,
+              "pUpper": 0.5228477152284772,
+              "zRef": 0.13248248477060165,
+              "pRefLower": 0.5686431356864313,
+              "flagged": false,
+              "broad": false,
+              "missedNonces": []
+            },
+            {
+              "epoch": "68d927e3b9f0a945",
+              "phase": "A",
+              "S": 56.360644610000016,
+              "mu": 49.95000007812501,
+              "sd": 8.841176139558053,
+              "z": 0.7250895616921234,
+              "pLower": 0.7755224477552245,
+              "pUpper": 0.22477752224777522,
+              "zRef": 0.5452575516569221,
+              "pRefLower": 0.6288371162883711,
+              "flagged": false,
+              "broad": false,
+              "missedNonces": []
+            },
+            {
+              "epoch": "9ba5e4b2d361b531",
+              "phase": "B",
+              "S": 46.83296325,
+              "mu": 49.94999997552487,
+              "sd": 46.856902390004706,
+              "z": -0.06652246662787895,
+              "pLower": 0.6064393560643936,
+              "pUpper": 0.39386061393860616,
+              "zRef": -1.61211875296227,
+              "pRefLower": 0.0082991700829917,
+              "flagged": false,
+              "broad": false,
+              "missedNonces": []
+            },
+            {
+              "epoch": "d5306f89d6b7f6d8",
+              "phase": "B",
+              "S": 41.988173929999974,
+              "mu": 49.94999997552487,
+              "sd": 46.856902390004706,
+              "z": -0.16991789126938261,
+              "pLower": 0.47535246475352466,
+              "pUpper": 0.5254474552544746,
+              "zRef": 0.24927070575803167,
+              "pRefLower": 0.6676332366763323,
+              "flagged": false,
+              "broad": false,
+              "missedNonces": []
+            },
+            {
+              "epoch": "375a48f9930c4df4",
+              "phase": "B",
+              "S": 38.15271572999998,
+              "mu": 49.94999997552487,
+              "sd": 46.856902390004706,
+              "z": -0.25177260219492076,
+              "pLower": 0.36476352364763526,
+              "pUpper": 0.6397360263973603,
+              "zRef": -1.0184286611833984,
+              "pRefLower": 0.13008699130086993,
+              "flagged": false,
+              "broad": false,
+              "missedNonces": []
+            },
+            {
+              "epoch": "2a404c084984ea9c",
+              "phase": "B",
+              "S": 41.38257527999998,
+              "mu": 49.94999997552487,
+              "sd": 46.856902390004706,
+              "z": -0.18284231902944673,
+              "pLower": 0.45355464453554645,
+              "pUpper": 0.5522447755224478,
+              "zRef": 0.503971085034431,
+              "pRefLower": 0.7243275672432756,
+              "flagged": false,
+              "broad": false,
+              "missedNonces": []
+            },
+            {
+              "epoch": "5d914de946ca4fea",
+              "phase": "B",
+              "S": 45.21803347999998,
+              "mu": 49.94999997552487,
+              "sd": 46.856902390004706,
+              "z": -0.10098760810390846,
+              "pLower": 0.5666433356664333,
+              "pUpper": 0.43815618438156184,
+              "zRef": 2.6655649471833525,
+              "pRefLower": 0.9793020697930207,
+              "flagged": false,
+              "broad": false,
+              "missedNonces": []
+            },
+            {
+              "epoch": "2475c65bd35ad3b7",
+              "phase": "B",
+              "S": 63.99159203999999,
+              "mu": 49.94999997552487,
+              "sd": 46.856902390004706,
+              "z": 0.29966966120813,
+              "pLower": 0.8602139786021398,
+              "pUpper": 0.14028597140285973,
+              "zRef": -0.10987515142384059,
+              "pRefLower": 0.5571442855714429,
+              "flagged": false,
+              "broad": false,
+              "missedNonces": []
+            },
+            {
+              "epoch": "3fc6c0699c6cc23d",
+              "phase": "B",
+              "S": 28.261270899999978,
+              "mu": 49.94999997552487,
+              "sd": 46.856902390004706,
+              "z": -0.4628715934955066,
+              "pLower": 0.0851914808519148,
+              "pUpper": 0.9158084191580842,
+              "zRef": -0.9225342740988065,
+              "pRefLower": 0.16798320167983202,
+              "flagged": false,
+              "broad": false,
+              "missedNonces": []
+            },
+            {
+              "epoch": "74481b1c82e0f46b",
+              "phase": "B",
+              "S": 161.08924445,
+              "mu": 49.94999997552487,
+              "sd": 46.856902390004706,
+              "z": 2.371886292214289,
+              "pLower": 0.9773022697730227,
+              "pUpper": 0.022897710228977103,
+              "zRef": -0.3062448681604097,
+              "pRefLower": 0.47005299470052997,
+              "flagged": false,
+              "broad": false,
+              "missedNonces": []
+            },
+            {
+              "epoch": "2541482e312a3730",
+              "phase": "B",
+              "S": 20.99408693999999,
+              "mu": 49.94999997552487,
+              "sd": 46.856902390004706,
+              "z": -0.6179647300309297,
+              "pLower": 0.010298970102989701,
+              "pUpper": 0.9917008299170083,
+              "zRef": -0.3303711633020386,
+              "pRefLower": 0.45715428457154283,
+              "flagged": false,
+              "broad": false,
+              "missedNonces": []
+            },
+            {
+              "epoch": "fb79d981b4416944",
+              "phase": "B",
+              "S": 51.67775257999998,
+              "mu": 49.94999997552487,
+              "sd": 46.856902390004706,
+              "z": 0.03687295822703957,
+              "pLower": 0.7052294770522948,
+              "pUpper": 0.2953704629537046,
+              "zRef": 0.6814062410148887,
+              "pRefLower": 0.7638236176382361,
+              "flagged": false,
+              "broad": false,
+              "missedNonces": []
+            },
+            {
+              "epoch": "a4b81198e17f7b16",
+              "phase": "B",
+              "S": 39.363913069999995,
+              "mu": 49.94999997552487,
+              "sd": 46.856902390004706,
+              "z": -0.22592374582112895,
+              "pLower": 0.3932606739326067,
+              "pUpper": 0.6075392460753924,
+              "zRef": -1.28656646981756,
+              "pRefLower": 0.051294870512948704,
+              "flagged": false,
+              "broad": false,
+              "missedNonces": []
+            },
+            {
+              "epoch": "58cf8f82e49f62e0",
+              "phase": "B",
+              "S": 43.401237489999986,
+              "mu": 49.94999997552487,
+              "sd": 46.856902390004706,
+              "z": -0.13976089223776417,
+              "pLower": 0.5194480551944806,
+              "pUpper": 0.4841515848415158,
+              "zRef": -1.0147639075982997,
+              "pRefLower": 0.1321867813218678,
+              "flagged": false,
+              "broad": false,
+              "missedNonces": []
+            },
+            {
+              "epoch": "bdd9e2483b713e16",
+              "phase": "B",
+              "S": 31.69299666999997,
+              "mu": 49.94999997552487,
+              "sd": 46.856902390004706,
+              "z": -0.38963316767220607,
+              "pLower": 0.15978402159784022,
+              "pUpper": 0.8403159684031597,
+              "zRef": 1.9005476220966218,
+              "pRefLower": 0.9473052694730527,
+              "flagged": false,
+              "broad": false,
+              "missedNonces": []
+            },
+            {
+              "epoch": "6bab889caf0d90af",
+              "phase": "B",
+              "S": 36.53778595999999,
+              "mu": 49.94999997552487,
+              "sd": 46.856902390004706,
+              "z": -0.2862377436709498,
+              "pLower": 0.31626837316268375,
+              "pUpper": 0.6848315168483151,
+              "zRef": 1.175231795852219,
+              "pRefLower": 0.8648135186481352,
+              "flagged": false,
+              "broad": false,
+              "missedNonces": []
+            },
+            {
+              "epoch": "effe3b04266a8df0",
+              "phase": "B",
+              "S": 50.870287669999996,
+              "mu": 49.94999997552487,
+              "sd": 46.856902390004706,
+              "z": 0.019640386955485978,
+              "pLower": 0.6964303569643036,
+              "pUpper": 0.3046695330466953,
+              "zRef": -0.44703248783705163,
+              "pRefLower": 0.40005999400059994,
+              "flagged": false,
+              "broad": false,
+              "missedNonces": []
+            },
+            {
+              "epoch": "31bac9348858410a",
+              "phase": "B",
+              "S": 38.15271572999998,
+              "mu": 49.94999997552487,
+              "sd": 46.856902390004706,
+              "z": -0.25177260219492076,
+              "pLower": 0.36476352364763526,
+              "pUpper": 0.6397360263973603,
+              "zRef": -0.5502563820009237,
+              "pRefLower": 0.35226477352264773,
+              "flagged": false,
+              "broad": false,
+              "missedNonces": []
+            },
+            {
+              "epoch": "6f70b8229ebcd1c1",
+              "phase": "B",
+              "S": 34.115391309999985,
+              "mu": 49.94999997552487,
+              "sd": 46.856902390004706,
+              "z": -0.33793545577828565,
+              "pLower": 0.23777622237776222,
+              "pUpper": 0.7654234576542346,
+              "zRef": -0.6525640882410652,
+              "pRefLower": 0.2990700929907009,
+              "flagged": false,
+              "broad": false,
+              "missedNonces": [
+                32
+              ]
+            },
+            {
+              "epoch": "c38d0fac14b9050c",
+              "phase": "B",
+              "S": 47.23669568999998,
+              "mu": 49.94999997552487,
+              "sd": 46.856902390004706,
+              "z": -0.05790618131222592,
+              "pLower": 0.6204379562043796,
+              "pUpper": 0.3832616738326167,
+              "zRef": -0.010621406875063142,
+              "pRefLower": 0.5905409459054095,
+              "flagged": false,
+              "broad": false,
+              "missedNonces": []
+            },
+            {
+              "epoch": "a8d858aa68842a95",
+              "phase": "B",
+              "S": 61.77106362,
+              "mu": 49.94999997552487,
+              "sd": 46.856902390004706,
+              "z": 0.25228009197203666,
+              "pLower": 0.8384161583841616,
+              "pUpper": 0.1616838316168383,
+              "zRef": 2.821927770015787,
+              "pRefLower": 0.983001699830017,
+              "flagged": false,
+              "broad": false,
+              "missedNonces": []
+            },
+            {
+              "epoch": "6d084e68d0cff3d1",
+              "phase": "B",
+              "S": 34.317257529999985,
+              "mu": 49.94999997552487,
+              "sd": 46.856902390004706,
+              "z": -0.333627313120459,
+              "pLower": 0.2505749425057494,
+              "pUpper": 0.7555244475552445,
+              "zRef": 1.0640676014136772,
+              "pRefLower": 0.8448155184481552,
+              "flagged": false,
+              "broad": false,
+              "missedNonces": []
+            },
+            {
+              "epoch": "ede4482d4eeaa977",
+              "phase": "B",
+              "S": 21.195953159999988,
+              "mu": 49.94999997552487,
+              "sd": 46.856902390004706,
+              "z": -0.613656587373103,
+              "pLower": 0.015198480151984802,
+              "pUpper": 0.9879012098790121,
+              "zRef": -1.2853448855765226,
+              "pRefLower": 0.0514948505149485,
+              "flagged": false,
+              "broad": false,
+              "missedNonces": []
+            },
+            {
+              "epoch": "1020bd5c168b3f03",
+              "phase": "B",
+              "S": 52.28335122999997,
+              "mu": 49.94999997552487,
+              "sd": 46.856902390004706,
+              "z": 0.04979738598710366,
+              "pLower": 0.7145285471452855,
+              "pUpper": 0.2860713928607139,
+              "zRef": -0.35877300398266776,
+              "pRefLower": 0.44395560443955606,
+              "flagged": false,
+              "broad": false,
+              "missedNonces": []
+            },
+            {
+              "epoch": "074c318485b3e7e0",
+              "phase": "B",
+              "S": 27.050073569999984,
+              "mu": 49.94999997552487,
+              "sd": 46.856902390004706,
+              "z": -0.48872044965588224,
+              "pLower": 0.07989201079892011,
+              "pUpper": 0.9211078892110789,
+              "zRef": -1.5201945154019276,
+              "pRefLower": 0.016298370162983702,
+              "flagged": false,
+              "broad": false,
+              "missedNonces": []
+            },
+            {
+              "epoch": "fafb8434cb0803e9",
+              "phase": "B",
+              "S": 71.05690978999999,
+              "mu": 49.94999997552487,
+              "sd": 46.856902390004706,
+              "z": 0.45045465529914225,
+              "pLower": 0.9152084791520848,
+              "pUpper": 0.08649135086491351,
+              "zRef": 0.07488951149934893,
+              "pRefLower": 0.6178382161783822,
+              "flagged": false,
+              "broad": false,
+              "missedNonces": []
+            },
+            {
+              "epoch": "491d96fef983c280",
+              "phase": "B",
+              "S": 28.46313711999998,
+              "mu": 49.94999997552487,
+              "sd": 46.856902390004706,
+              "z": -0.45856345083767985,
+              "pLower": 0.09429057094290572,
+              "pUpper": 0.9086091390860914,
+              "zRef": -0.45069724140667355,
+              "pRefLower": 0.39836016398360163,
+              "flagged": false,
+              "broad": false,
+              "missedNonces": []
+            },
+            {
+              "epoch": "87c0a676ecb44095",
+              "phase": "B",
+              "S": 25.03141135999999,
+              "mu": 49.94999997552487,
+              "sd": 46.856902390004706,
+              "z": -0.5318018764475646,
+              "pLower": 0.052394760523947606,
+              "pUpper": 0.9501049895010499,
+              "zRef": -0.407025593781927,
+              "pRefLower": 0.42015798420157985,
+              "flagged": false,
+              "broad": false,
+              "missedNonces": []
+            },
+            {
+              "epoch": "eca3b98f4038afd0",
+              "phase": "B",
+              "S": 81.35208709,
+              "mu": 49.94999997552487,
+              "sd": 46.856902390004706,
+              "z": 0.6701699325556286,
+              "pLower": 0.953004699530047,
+              "pUpper": 0.0476952304769523,
+              "zRef": 1.3370917483576845,
+              "pRefLower": 0.8903109689031097,
+              "flagged": false,
+              "broad": false,
+              "missedNonces": []
+            },
+            {
+              "epoch": "7ff67138f35a46d5",
+              "phase": "B",
+              "S": 38.15271572999998,
+              "mu": 49.94999997552487,
+              "sd": 46.856902390004706,
+              "z": -0.25177260219492076,
+              "pLower": 0.36476352364763526,
+              "pUpper": 0.6397360263973603,
+              "zRef": 1.7774729790715034,
+              "pRefLower": 0.9392060793920608,
+              "flagged": false,
+              "broad": false,
+              "missedNonces": []
+            },
+            {
+              "epoch": "06cad74546397c67",
+              "phase": "B",
+              "S": 54.302013439999996,
+              "mu": 49.94999997552487,
+              "sd": 46.856902390004706,
+              "z": 0.09287881277878665,
+              "pLower": 0.7481251874812519,
+              "pUpper": 0.25207479252074794,
+              "zRef": -0.24150088714551582,
+              "pRefLower": 0.5016498350164984,
+              "flagged": false,
+              "broad": false,
+              "missedNonces": []
+            },
+            {
+              "epoch": "623bff43233d3b72",
+              "phase": "B",
+              "S": 41.78630771999998,
+              "mu": 49.94999997552487,
+              "sd": 46.856902390004706,
+              "z": -0.1742260337137934,
+              "pLower": 0.47455254474552544,
+              "pUpper": 0.5257474252574742,
+              "zRef": 1.1208712834414418,
+              "pRefLower": 0.8558144185581442,
+              "flagged": false,
+              "broad": false,
+              "missedNonces": []
+            },
+            {
+              "epoch": "686ad03a75728861",
+              "phase": "B",
+              "S": 77.11289641999998,
+              "mu": 49.94999997552487,
+              "sd": 46.856902390004706,
+              "z": 0.5796989356741895,
+              "pLower": 0.942005799420058,
+              "pUpper": 0.0585941405859414,
+              "zRef": 0.033050240704789166,
+              "pRefLower": 0.6054394560543945,
+              "flagged": false,
+              "broad": false,
+              "missedNonces": []
+            },
+            {
+              "epoch": "3f923ae7a6cb7739",
+              "phase": "B",
+              "S": 39.16204684999999,
+              "mu": 49.94999997552487,
+              "sd": 46.856902390004706,
+              "z": -0.23023188847895576,
+              "pLower": 0.3805619438056194,
+              "pUpper": 0.621037896210379,
+              "zRef": -1.203498720756911,
+              "pRefLower": 0.06939306069393061,
+              "flagged": false,
+              "broad": false,
+              "missedNonces": []
+            },
+            {
+              "epoch": "dd4e59e9017c363f",
+              "phase": "B",
+              "S": 28.66500333999998,
+              "mu": 49.94999997552487,
+              "sd": 46.856902390004706,
+              "z": -0.4542553081798532,
+              "pLower": 0.1034896510348965,
+              "pUpper": 0.9009099090090991,
+              "zRef": -0.41160653594086954,
+              "pRefLower": 0.4176582341765823,
+              "flagged": false,
+              "broad": false,
+              "missedNonces": []
+            },
+            {
+              "epoch": "ba66f9c80659664e",
+              "phase": "B",
+              "S": 43.80496991999999,
+              "mu": 49.94999997552487,
+              "sd": 46.856902390004706,
+              "z": -0.13114460713552645,
+              "pLower": 0.52994700529947,
+              "pUpper": 0.47065293470652936,
+              "zRef": -0.6745526100232313,
+              "pRefLower": 0.28777122287771223,
+              "flagged": false,
+              "broad": false,
+              "missedNonces": []
+            },
+            {
+              "epoch": "705e8895c942733c",
+              "phase": "B",
+              "S": 23.214615369999983,
+              "mu": 49.94999997552487,
+              "sd": 46.856902390004706,
+              "z": -0.5705751605814205,
+              "pLower": 0.0306969303069693,
+              "pUpper": 0.9722027797220278,
+              "zRef": -0.43756520748929967,
+              "pRefLower": 0.40375962403759624,
+              "flagged": false,
+              "broad": false,
+              "missedNonces": []
+            },
+            {
+              "epoch": "91003b3c74ef1e54",
+              "phase": "B",
+              "S": 76.10356533,
+              "mu": 49.94999997552487,
+              "sd": 46.856902390004706,
+              "z": 0.5581582225984721,
+              "pLower": 0.9382061793820617,
+              "pUpper": 0.062193780621937804,
+              "zRef": -0.8159510218810008,
+              "pRefLower": 0.21757824217578242,
+              "flagged": false,
+              "broad": false,
+              "missedNonces": []
+            },
+            {
+              "epoch": "fcada199e685193d",
+              "phase": "B",
+              "S": 34.115391309999985,
+              "mu": 49.94999997552487,
+              "sd": 46.856902390004706,
+              "z": -0.33793545577828565,
+              "pLower": 0.23777622237776222,
+              "pUpper": 0.7654234576542346,
+              "zRef": 1.2537186026933016,
+              "pRefLower": 0.8780121987801219,
+              "flagged": false,
+              "broad": false,
+              "missedNonces": []
+            },
+            {
+              "epoch": "f1bbd1bd36c2b46d",
+              "phase": "B",
+              "S": 47.03482946999999,
+              "mu": 49.94999997552487,
+              "sd": 46.856902390004706,
+              "z": -0.062214323970052436,
+              "pLower": 0.6146385361463854,
+              "pUpper": 0.38746125387461255,
+              "zRef": -0.38625865643712587,
+              "pRefLower": 0.43045695430456954,
+              "flagged": false,
+              "broad": false,
+              "missedNonces": []
+            },
+            {
+              "epoch": "7d196e32d00a68a9",
+              "phase": "B",
+              "S": 32.50046153999998,
+              "mu": 49.94999997552487,
+              "sd": 46.856902390004706,
+              "z": -0.37240059725431485,
+              "pLower": 0.20017998200179982,
+              "pUpper": 0.8072192780721927,
+              "zRef": 0.9351904311575787,
+              "pRefLower": 0.8205179482051795,
+              "flagged": false,
+              "broad": false,
+              "missedNonces": []
+            },
+            {
+              "epoch": "156b501dac10fa22",
+              "phase": "B",
+              "S": 46.83296324999999,
+              "mu": 49.94999997552487,
+              "sd": 46.856902390004706,
+              "z": -0.0665224666278791,
+              "pLower": 0.6062393760623938,
+              "pUpper": 0.39636036396360363,
+              "zRef": 0.004648399872853166,
+              "pRefLower": 0.5952404759524048,
+              "flagged": false,
+              "broad": false,
+              "missedNonces": []
+            },
+            {
+              "epoch": "b54599eda693afd1",
+              "phase": "C",
+              "S": 35.93218729999998,
+              "mu": 49.94999997552487,
+              "sd": 46.856902390004706,
+              "z": -0.29916217164442993,
+              "pLower": 0.2886711328867113,
+              "pUpper": 0.714928507149285,
+              "zRef": -0.28028619679356814,
+              "pRefLower": 0.48295170482951705,
+              "flagged": false,
+              "broad": false,
+              "missedNonces": []
+            },
+            {
+              "epoch": "1ecf2bad2920a4bc",
+              "phase": "C",
+              "S": 32.50046153999998,
+              "mu": 49.94999997552487,
+              "sd": 46.856902390004706,
+              "z": -0.37240059725431485,
+              "pLower": 0.20017998200179982,
+              "pUpper": 0.8072192780721927,
+              "zRef": -1.0785917000694993,
+              "pRefLower": 0.10688931106889311,
+              "flagged": false,
+              "broad": false,
+              "missedNonces": []
+            },
+            {
+              "epoch": "be0e9fcf1812b6a0",
+              "phase": "C",
+              "S": 31.087397989999978,
+              "mu": 49.94999997552487,
+              "sd": 46.856902390004706,
+              "z": -0.4025575960725174,
+              "pLower": 0.15978402159784022,
+              "pUpper": 0.8403159684031597,
+              "zRef": 1.5517852334125088,
+              "pRefLower": 0.9163083691630837,
+              "flagged": false,
+              "broad": false,
+              "missedNonces": []
+            },
+            {
+              "epoch": "3b7dc18e27c4539a",
+              "phase": "C",
+              "S": 50.46655522999998,
+              "mu": 49.94999997552487,
+              "sd": 46.856902390004706,
+              "z": 0.011024101639832347,
+              "pLower": 0.6808319168083191,
+              "pUpper": 0.3200679932006799,
+              "zRef": -0.8351909784555244,
+              "pRefLower": 0.2086791320867913,
+              "flagged": false,
+              "broad": false,
+              "missedNonces": []
+            },
+            {
+              "epoch": "debfede46cc0af86",
+              "phase": "D",
+              "S": 46.00654027000001,
+              "mu": 49.95000003152466,
+              "sd": 18.917948929447515,
+              "z": -0.20845070341564856,
+              "pLower": 0.48725127487251274,
+              "pUpper": 0.5128487151284872,
+              "zRef": -0.5054762412924362,
+              "pRefLower": 0.25417458254174585,
+              "flagged": false,
+              "broad": false,
+              "missedNonces": []
+            },
+            {
+              "epoch": "d9207ca0f8e1717f",
+              "phase": "D",
+              "S": 38.34249399,
+              "mu": 49.9500000252826,
+              "sd": 20.11412662500993,
+              "z": -0.5770822791206758,
+              "pLower": 0.12188781121887811,
+              "pUpper": 0.8782121787821218,
+              "zRef": 0.9006637881577833,
+              "pRefLower": 0.8136186381361864,
+              "flagged": false,
+              "broad": false,
+              "missedNonces": []
+            },
+            {
+              "epoch": "9cfae7ed8e3fc4b0",
+              "phase": "D",
+              "S": 36.225133009999986,
+              "mu": 49.95000002787232,
+              "sd": 20.364803045555412,
+              "z": -0.6739503930958844,
+              "pLower": 0.061693830616938304,
+              "pUpper": 0.9384061593840616,
+              "zRef": -0.6806028586806449,
+              "pRefLower": 0.24847515248475152,
+              "flagged": false,
+              "broad": false,
+              "missedNonces": []
+            },
+            {
+              "epoch": "95f9b198d0ca87a4",
+              "phase": "D",
+              "S": 95.97476218999996,
+              "mu": 49.95000002565307,
+              "sd": 20.054676625874983,
+              "z": 2.2949640636421305,
+              "pLower": 0.9816018398160185,
+              "pUpper": 0.0184981501849815,
+              "zRef": -0.521604321307101,
+              "pRefLower": 0.2435756424357564,
+              "flagged": false,
+              "broad": false,
+              "missedNonces": []
+            },
+            {
+              "epoch": "09513ec6ad7b8b60",
+              "phase": "D",
+              "S": 50.64801641999997,
+              "mu": 49.95000002515501,
+              "sd": 20.599779150585398,
+              "z": 0.03388465428403002,
+              "pLower": 0.6757324267573243,
+              "pUpper": 0.3243675632436756,
+              "zRef": -0.2334838913655972,
+              "pRefLower": 0.4173582641735826,
+              "flagged": false,
+              "broad": false,
+              "missedNonces": []
+            },
+            {
+              "epoch": "e2f213d5d7389dc9",
+              "phase": "D",
+              "S": 50.95562370999999,
+              "mu": 49.95000002616088,
+              "sd": 20.73230822761293,
+              "z": 0.04850514823524292,
+              "pLower": 0.6832316768323168,
+              "pUpper": 0.31686831316868314,
+              "zRef": -0.25036797380539405,
+              "pRefLower": 0.46555344465553444,
+              "flagged": false,
+              "broad": false,
+              "missedNonces": []
+            },
+            {
+              "epoch": "e2ca55674f8703fe",
+              "phase": "D",
+              "S": 43.18411133,
+              "mu": 49.95000002526366,
+              "sd": 19.691641555154074,
+              "z": -0.34359190808512174,
+              "pLower": 0.3488651134886511,
+              "pUpper": 0.6512348765123488,
+              "zRef": -0.4300302387141474,
+              "pRefLower": 0.3057694230576942,
+              "flagged": false,
+              "broad": false,
+              "missedNonces": []
+            },
+            {
+              "epoch": "80aea139cb50b44d",
+              "phase": "D",
+              "S": 53.174715679999984,
+              "mu": 49.95000003031189,
+              "sd": 19.983129709141163,
+              "z": 0.16137190203058965,
+              "pLower": 0.7457254274572542,
+              "pUpper": 0.25437456254374563,
+              "zRef": -1.623923084985964,
+              "pRefLower": 0.0156984301569843,
+              "flagged": false,
+              "broad": false,
+              "missedNonces": []
+            },
+            {
+              "epoch": "95dc96ca8a71fb01",
+              "phase": "D",
+              "S": 41.57073295000001,
+              "mu": 49.95000002649902,
+              "sd": 20.17298186401277,
+              "z": -0.4153707732939103,
+              "pLower": 0.2792720727927207,
+              "pUpper": 0.7208279172082792,
+              "zRef": 0.5544031774610123,
+              "pRefLower": 0.8029197080291971,
+              "flagged": false,
+              "broad": false,
+              "missedNonces": []
+            },
+            {
+              "epoch": "3de76da07892329c",
+              "phase": "D",
+              "S": 67.09844841,
+              "mu": 49.9500000261975,
+              "sd": 19.882986760801135,
+              "z": 0.8624684304276803,
+              "pLower": 0.9231076892310769,
+              "pUpper": 0.07699230076992301,
+              "zRef": -0.47589768596505055,
+              "pRefLower": 0.2782721727827217,
+              "flagged": false,
+              "broad": false,
+              "missedNonces": []
+            }
+          ]
+        }
+      },
+      "profileIds": [
+        "PLINKO-21",
+        "PLINKO-38"
+      ],
+      "profileChecks": [
+        {
+          "id": "PLINKO-21",
+          "coverage": "full",
+          "note": "every revealed epoch (162, bound to the revealed-seed count) × 10,000 nonces is REPLAYED in verify on the boards of its own epoch (src/pass2-replay.ts; one HMAC scan per nonce gives the slot of every board), and the replay is bound to the capture: 8,100/8,100 captured bets re-read at their own nonce equal the served slot. TEST C is the profile's statistic: the payout sum of the 50 configurations the casino actually served at nonces 0–49 (the captured nonce range; nonce n ≥ 50 plays served position n mod 50) standardised by the EXACT per-board mean and variance (binomial slot law × the served bracket-0 multipliers); reference window = nonces 50–9,999. Duel's 8-dp multipliers are too fine a lattice for an exact convolution, so the null is Monte-Carlo calibration on 10,000 FRESH seeds derived by a fixed public rule (nullSeed) playing the same served sequence; p = (1 + #null ≤ z)/(R + 1). Pre-registered one-sided rule (the TEST_C_* constants in tests/steps/simulation.ts, WRITTEN 2026-09-24 BEFORE THE STATISTIC WAS FIRST COMPUTED, with the α values HouseBets and LIQD fixed for the same statistic; written after this capture's seeds were revealed, as for those packages): flag at p ≤ 0.01; flags aggregated by Poisson-binomial survival over the per-epoch null flag probability; survival < 0.001 → FAIL, < 0.01 → FLAG (marginal excess); BROAD (early AND reference window both p ≤ 0.001, reference null = bootstrap of 199 calibrated windows) → FAIL; pooled z < −3.090 → FAIL. Direction split and detection power are printed. Tests A and B of the committed artifact are now RE-DERIVED row by row from the replay (242 rows, 0 mismatches) instead of read. Measured: 1/162 epochs flagged (family survival 0.8037; the rule fails at 8), 0 broad, pooled z −0.554, early windows 98 below / 64 above expectation (the null expects 99.9 below); power at a 10% early-window shortfall 12.7% per epoch, 30.7% for the family if 25% of epochs were picked. Disclosed: in the 2 capture-retry epochs (L2) the early window 0–49 holds the replayed missed nonce and captured nonce 50 falls in the reference window. FAIL probed: M29b (early windows pay half → family and pooled gates), M29c (whole seed pays half → broad), M29d (a Test B p-value forged, artifact re-pinned), M29e (replay reads the wrong nonce → binding); FLAG probed: M29f (eight epochs' early windows pay half → marginal excess)"
+        },
+        {
+          "id": "PLINKO-38",
+          "coverage": "full"
+        }
+      ]
     },
     {
       "step": 21,
@@ -1457,10 +5469,208 @@
       ],
       "severity": "PASS",
       "pass": true,
-      "summary": "4 artifact(s) match src/artifact-pins.ts: chi-squared-results.json matches its pin; determinism-log.json matches its pin; rtp-convergence.html matches its pin; simulation-results.json matches its pin",
-      "failures": []
+      "summary": "4 artifact(s) match src/artifact-pins.ts and 45151 numeric leaves lie within value domains derived from src/: chi-squared-results.json matches its pin; determinism-log.json matches its pin; rtp-convergence.html matches its pin; simulation-results.json matches its pin; simulation-results.json — 3834 numeric leaves within their value domains; chi-squared-results.json — 813 numeric leaves within their value domains; determinism-log.json — 40504 numeric leaves within their value domains",
+      "failures": [],
+      "profileIds": [
+        "PLINKO-27"
+      ],
+      "profileChecks": [
+        {
+          "id": "PLINKO-27",
+          "coverage": "full",
+          "note": "every pinned artifact is re-hashed, un-ignored by name and free of run metadata, and run products go to outputs/run/; and src/domains.ts now declares a value domain for every numeric leaf of every pinned JSON artifact — bounds derived from src/ (sim-seeds.ts, loader.ts) and the hash-pinned config, never from the artifact under check — which this step enforces as a HARD_FAIL: an out-of-domain leaf or a leaf with no declared domain fails, so re-pinning a doctored scalar no longer passes"
+        }
+      ]
+    },
+    {
+      "step": 22,
+      "name": "Published-Pin Drift Scan",
+      "ecRefs": [
+        "EC-25"
+      ],
+      "severity": "PASS",
+      "pass": true,
+      "summary": "37 64-hex tokens across 2 published chapters, every one of them a pin src/ declares, a value that occurs in the audited dataset or the committed config, or an allow-listed token (the recomputed SHA-256 of an image in evidence/, or the all-zero placeholder). Nothing quoted in the prose names evidence this package does not ship.",
+      "failures": [],
+      "details": {
+        "chapters": 2,
+        "tokensScanned": 37,
+        "resolvedBy": {
+          "declaredPin": 15,
+          "datasetValue": 4,
+          "configValue": 0,
+          "allowListed": 18
+        },
+        "unresolved": 0,
+        "declaredPins": [
+          "src/loader.ts EXPECTED_DATASET_SHA256",
+          "src/loader.ts PLINKO_CONFIG_HASH",
+          "src/artifact-pins.ts chi-squared-results.json",
+          "src/artifact-pins.ts determinism-log.json",
+          "src/artifact-pins.ts rtp-convergence.html",
+          "src/artifact-pins.ts simulation-results.json",
+          "src/site-verifier.ts games/plinko/derive.js",
+          "src/site-verifier.ts games/plinko/paytables.js",
+          "src/site-verifier.ts games/plinko/scalingEdge.js",
+          "src/site-verifier.ts lib/hmac-sha256.js",
+          "src/live-site-verifier.ts chunks/turbopack-828b80f561e7c968.js",
+          "src/live-site-verifier.ts chunks/34934e0e762aa37e.js",
+          "src/live-site-verifier.ts chunks/4f34301b2f166201.js",
+          "src/live-site-verifier.ts run-live-verifier.cjs",
+          "src/operator-verifier.ts evidence/verify-tab/duel-verify-tab-plinko-2026-09-25.js",
+          "src/operator-verifier.ts verifier-parity/operator/run-operator-verifier.cjs"
+        ],
+        "allowList": [
+          {
+            "token": "0000000000000000000000000000000000000000000000000000000000000000",
+            "reason": "the all-zero placeholder used in negative-control examples; it is not a value from the capture"
+          }
+        ],
+        "method": "keyword-free: every 64-hex token in every root-level .md is read, not only those near the word \"hash\""
+      },
+      "profileIds": [
+        "PLINKO-35"
+      ],
+      "profileChecks": [
+        {
+          "id": "PLINKO-35",
+          "coverage": "full"
+        }
+      ]
+    },
+    {
+      "step": 23,
+      "name": "Epoch-Window Slot Fit (live drops vs binomial)",
+      "ecRefs": [
+        "EC-33"
+      ],
+      "severity": "PASS",
+      "pass": true,
+      "summary": "8100 captured drops pooled by board size (9 groups); rows 8: n=657 chi2=4.07 df=6 p=0.6666 | rows 9: n=657 chi2=9.85 df=7 p=0.1971 | rows 10: n=657 chi2=8.52 df=8 p=0.3843 | rows 11: n=657 chi2=3.56 df=7 p=0.8290 | rows 12: n=656 chi2=3.26 df=8 p=0.9171 | rows 13: n=654 chi2=11.72 df=9 p=0.2295 | rows 14: n=654 chi2=5.07 df=8 p=0.7499 | rows 15: n=654 chi2=6.05 df=9 p=0.7351 | rows 16: n=2854 chi2=15.47 df=12 p=0.2166; Fisher X2=13.71 df=18 combined p=0.7475; Bonferroni per-group alpha=1.11e-3; p-values are NOMINAL — informational, a live sample has little power and never bears the verdict",
+      "failures": [],
+      "details": {
+        "drops": 8100,
+        "groups": 9,
+        "fisherX2": 13.71412485637953,
+        "fisherDf": 18,
+        "fisherCombinedP": 0.747527817827994,
+        "minGroupP": 0.19705421165603876,
+        "bonferroniPerGroupAlpha": 0.0011111111111111111,
+        "perGroupP": {
+          "rows8": 0.6666167614919296,
+          "rows9": 0.19705421165603876,
+          "rows10": 0.3842827692261457,
+          "rows11": 0.828969517313683,
+          "rows12": 0.9170850103344939,
+          "rows13": 0.2295261472949024,
+          "rows14": 0.7499126503307252,
+          "rows15": 0.7351454925764446,
+          "rows16": 0.21663990733067218
+        },
+        "perGroupChi2": {
+          "rows8": 4.0743398323307,
+          "rows9": 9.853064675895727,
+          "rows10": 8.521170390576781,
+          "rows11": 3.5586998687796063,
+          "rows12": 3.2587643292181734,
+          "rows13": 11.720542749661218,
+          "rows14": 5.071452138639334,
+          "rows15": 6.047594946677516,
+          "rows16": 15.47186271461485
+        },
+        "perGroupN": {
+          "rows8": 657,
+          "rows9": 657,
+          "rows10": 657,
+          "rows11": 657,
+          "rows12": 656,
+          "rows13": 654,
+          "rows14": 654,
+          "rows15": 654,
+          "rows16": 2854
+        }
+      },
+      "profileIds": [
+        "PLINKO-22"
+      ],
+      "profileChecks": [
+        {
+          "id": "PLINKO-22",
+          "coverage": "full"
+        }
+      ]
     }
   ],
+  "profileCoverage": {
+    "game": "plinko",
+    "profileVersion": "1.0.2",
+    "notApplicable": [
+      {
+        "id": "PLINKO-34",
+        "reason": "the suite has no mode that narrows what a run attested — no sampled re-execution and no baseline re-emission — so there is no attestation scope to record and refuse"
+      },
+      {
+        "id": "PLINKO-16",
+        "reason": "no bet response in the capture carries a balance field, so there is no consecutive-bet delta to reconcile"
+      }
+    ],
+    "packageChecks": [
+      {
+        "id": "PLINKO-37",
+        "artifact": "scripts/build-standalone.mjs + scripts/check-standalone.mjs",
+        "coverage": "full",
+        "note": "verify.js and test.js are compiled from the checked-in TypeScript sources and standalone-manifest.json pins the SHA-256 of every input and output; check-standalone runs first in npm test and refuses a bundle built from anything but the committed sources"
+      },
+      {
+        "id": "PLINKO-33",
+        "artifact": "scripts/check-outputs.mjs",
+        "coverage": "full",
+        "note": "the declared step set is parsed from tests/steps/*.ts (source, not the artifact under check) and outputs/verification-results.json is required to carry ids 1..23 each exactly once under the name its module declares, with summary.passed/flags/hardFail reconciled against the steps array — so a duplicated, missing, renumbered or renamed step is caught. Runs in npm test before the verifier (the verifier exits 2 on the disclosed Conditional flag)"
+      },
+      {
+        "id": "PLINKO-09",
+        "artifact": "tests/plinko/PlinkoTests.ts (Operator source block) + src/rng.ts OPERATOR_SOURCE_CITES + src/operator-verifier.ts + Step 5",
+        "coverage": "full",
+        "note": "CORRECTED 2026-09-25: the earlier note said the operator's algorithm was referenced only as an external repository and a screenshot. Duel publishes it as source on its Verify tab (S10 already showed the whole panel); it is now vendored: evidence/verify-tab/duel-verify-tab-plinko-2026-09-25.js, copied verbatim by Paulo on 2026-09-25 (duel.com → Provably Fair → Verify → Expand → Copy), SHA-256 8b3366d1…, pinned with its runner in src/operator-verifier.ts. The asserts, each met: (1) \"unit tests reproduce at least one captured bet from its revealed seed … against the operator's published algorithm\" — the Operator source block in tests/plinko/PlinkoTests.ts EXECUTES that file unmodified on all 8,100 captured bets: its validatePlinkoResult bucket equals the served final_slot and src/rng.ts on 8,100/8,100, and the L/R path read from its own prefix sums equals src/rng.ts's; (2) \"fixed vectors\" — the same block requires it to return the 7 known-answer slots (one per config sampled); (3) \"the adapter cites the operator source line it ports\" — src/rng.ts OPERATOR_SOURCE_CITES names 8 lines of the pinned file (L29 hex-decoded key … L60 position += value % 2, L63 return) with the text each must carry, and checkOperatorCites FAILs any that does not: 8/8. Step 5 runs the same execution and citation check in the verifier. FAIL probed: M07g (a logic line of the operator file changed AND its pin recomputed → disagreement), M07h (a byte changed without re-pin → hash mismatch), M07i (a citation moved to a line that does not carry its text). Not established: that the Verify button, or Duel's server, runs exactly this code"
+      },
+      {
+        "id": "PLINKO-23",
+        "artifact": "MANIFEST.md#verification-results + scripts/check-exploit-matrix.mjs",
+        "coverage": "full",
+        "note": "MANIFEST.md (Verification results) carries the standardized matrix with the framework's eight named rows S5-1 … S5-8, each with one verdict (Pass / Not tested — disclosed) tied to a scored step or a disclosed capture limitation; input validation and cross-player isolation are honestly Not tested — disclosed (a single-account capture of valid bets). check-exploit-matrix.mjs parses the marked block and fails npm test unless all eight rows are present once with a valid verdict and a tie. The audit's original ten-category taxonomy is preserved as supplementary detail"
+      },
+      {
+        "id": "PLINKO-24",
+        "artifact": "verifier-parity/ + src/site-verifier.ts + src/live-site-verifier.ts + Step 5 (docusaurus and live-site legs) + scripts/check-site-verifier.mjs [--live]",
+        "coverage": "full",
+        "note": "TWO site verifiers are pinned and executed (ported from Duel Mines, 2026-09-24). (1) DOCUSAURUS: the site verifier the profile names — qa-workspace/duel/docusaurus VerifyBets games/plinko/derive.js and the three files it reaches (lib/hmac-sha256.js, games/plinko/paytables.js, games/plinko/scalingEdge.js) — is HASH-MATCHED and EXECUTED: the package records all four SHA-256 (src/site-verifier.ts SITE_VERIFIER_PINS: derive.js dd841748…, re-vendored 2026-09-25 from the site's origin/main @ bd4d59c; the earlier repotree-sync @ 2ad89bc bytes of derive.js and paytables.js differed only in the source-URL comment) and holds byte-exact copies in verifier-parity/; Step 5 FAILs unless the copies hash to the pins, then runs the site's own derivePlinko on all 8,100 captured bets (bound to EXPECTED_BETS) and FAILs on any slot or L/R path that differs from src/rng.ts computePathFromBuffer. Measured: 8,100/8,100 slot and path, 0 mismatches. FINDING (L5, verdict-neutral, against the ProvablyFair.org verifier, not the operator): the MULTIPLIER derive.js returns differs from the one Duel served on 224 of 8,100 bets (53 cells, largest gap 1.1e-7) because paytables.js is plinkoConfig.json payout_tables (351/351 cells) while Duel pays scaling_edge[0] (Step 8); the two differ on 118/351 cells by ≤ 1.49e-6. Step 5 requires the divergence to be EXACTLY the declared one (DECLARED_SITE_MULTIPLIER_DIVERGENCE). scripts/check-site-verifier.mjs <site derive.js> walks the import graph and compares a site checkout with the pins; run 2026-09-25 against the site's origin/main @ bd4d59c (files read with git cat-file): 4/4 MATCH, exit 0. (2) LIVE SITE: https://www.provablyfair.org/verify-bets (Next.js build, source not available to this audit): the three chunks the Duel Plinko derivation needs are the ones pinned by Duel Mines (same bytes, same pins), vendored in verifier-parity/live-site/chunks/ and pinned with the Plinko runner in src/live-site-verifier.ts; Step 5 runs the page's OWN code with the call its Verify button makes on the same 8,100 bets and FAILs unless the printed slot (both forms), bucket count, L/R path and serverSeedHash equal the capture and src/rng.ts and the printed multiplier rounds from the served one. Measured: 8,100/8,100, 0 mismatches (the live page's table is also payout_tables, 351/351 cells, but it prints 2 decimals or fewer, and no captured bet's printed value differs). node scripts/check-site-verifier.mjs --live GET 2026-09-24: 3/3 MATCH, exit 0. FAIL probed: M07b (a derive.js logic line changed AND re-pinned), M07c (a byte changed without re-pin), M07d (the live chunk's Duel Plinko line changed AND re-pinned), M07e (a chunk byte without re-pin), M07f (the declared divergence count no longer measured). NOT exercised: the site adapter index.js and its bet-size bracket lookup (every call passes bracket 0, the adapter default)"
+      },
+      {
+        "id": "PLINKO-25",
+        "artifact": "MANIFEST.md#verify-a-bet",
+        "coverage": "full",
+        "note": "MANIFEST \"Verify a bet\" carries the ordered player-verification path — the four fields to take from a bet record, where the seed is revealed on rotation, and the two paste-able browser checks (commitment hash and slot recomputation), and the payout lookup; README.md points to it"
+      },
+      {
+        "id": "PLINKO-28",
+        "artifact": "tests/verify.ts + src/diff.ts + src/diff-simulation.ts + npm test / npm run test:full",
+        "coverage": "full",
+        "note": "npm test = standalone check → node test.js → check-outputs → check-exploit-matrix → node verify.js (zero-install bundle), which prints 23 scored steps with the verdict PROVABLY FAIR — Full Pass and exits 0; it writes only to outputs/run/ (never a pinned artifact) and diffs the committed artifacts field by field at 1e-14 + 1e-12·max (integers and strings exact), recording the Node runtime in outputs/run/diff.json and exiting 1 beyond tolerance. REGENERATION DIFFED (added 2026-09-24): `npm run test:full` re-simulates into outputs/run/ with the generator itself (PF_SIM_OUT), src/diff-simulation.ts compares simulation-results.json field by field and rtp-convergence.html byte for byte (outputs/run/diff-simulation.json, runtime recorded), and the following npm test runs with PF_REGEN=1 so the regenerated simulation is also in outputs/run/diff.json. Measured 2026-09-24 on Node 22.23.1: simulation-results.json REPRODUCED (1 field differs, 1.11e-16 at pass2_casino_seeds.test_b_cherry_pick_pvalue, within tolerance), rtp-convergence.html byte-identical. Step count 23 in README.md, MANIFEST.md and the suite; audit ID PF-2026-DL01 in both docs; engines 22.x and .nvmrc. FRESH-CLONE CHECK (emulated, 2026-09-24): the exact file set a commit of this working tree would carry (git ls-files + untracked-not-ignored, no node_modules, no outputs/run) copied to a scratch directory; npm ci --offline (local npm cache, no network) exit 0; npm test exit 0 in 3 min 28 s on Node 22.23.1 — 34/34 unit tests, 23 steps, PROVABLY FAIR — Full Pass, REPRODUCED; the five committed outputs/ artifacts byte-unchanged afterwards. NOT an actual `git clone` of a pushed commit (nothing is committed), and not run on a second machine"
+      },
+      {
+        "id": "PLINKO-29",
+        "artifact": "tests/mutations.json + scripts/mutate.mjs",
+        "coverage": "full",
+        "note": "53 step-named counterexamples in tests/mutations.json (49 until 14 October 2026, when the four exit-5 entries MC3a, MC3as, MC3b and MC3bs were added) run in a disposable copy under `npm run mutate`; all 23 scored steps have at least one mutation that kills them, forgeries re-pin the SHA-256 they invalidated, and the battery refuses to score itself unless the unmutated copy is green first (full Pass-1 replay). Mutations aimed at steps other than 19 run with PF_P1_REPLAY=off (Step 19 capped at FLAG; each kill is decided by its own step marker). Latest runs, recorded in MANIFEST.md: the whole registry of 49 on 14 October 2026, 49/49 killed, 23/23 steps covered; then 10 entries including the four MC3 entries, 10/10 killed; RELEASE-MANIFEST.json records 53/53. Run 2026-09-24: 45/46 killed, 23/23 steps covered; the one miss, M27, was a real regression of this round (the full replay had put the running-RTP points under tolerance) — fixed to exact comparison and M27 re-run: see MANIFEST.md. There are no declared survivors"
+      },
+      {
+        "id": "PLINKO-30",
+        "artifact": "MANIFEST.md#evidence + MANIFEST.md#limitations-and-trust",
+        "coverage": "full",
+        "note": "MANIFEST Evidence numbers E01–E19 with their evidential role and now publishes the SHA-256 of every exhibit image (Step 22 allows exactly the hashes matching a real file in evidence/), and MANIFEST.md carries both a Declared Limitations register and a Load-Bearing Premises table"
+      }
+    ]
+  },
   "informational": [
     {
       "label": "RTP Analysis",

@@ -19,6 +19,48 @@ export function binomProb(rows: number, k: number): number {
 }
 
 /**
+ * P(two independent drops on the same board land in the same slot) = Σ_k P(k)².
+ *
+ * The identity Σ_k C(n,k)² = C(2n,n) makes this C(2·rows, rows)/4^rows — about 0.16 on a
+ * twelve-row board. It is the null a SLOT comparison has to be scored against; the far smaller
+ * 2^-rows belongs to a PATH comparison. Confusing the two is how "99 % of slots changed" comes to
+ * look like a strong result when the board predicts 84 %.
+ */
+export function slotCoincidenceProb(rows: number): number {
+  return binomCoeff(2 * rows, rows) * Math.pow(0.25, rows);
+}
+
+/**
+ * Exact Poisson-binomial survival: P(X ≥ k) where X = Σ Bernoulli(pᵢ) with DIFFERENT pᵢ.
+ *
+ * Coincidence counts cannot be pooled against one rate when the population mixes board sizes —
+ * a coincidence on an 8-row board is 256 times more likely than on a 16-row board, so a single
+ * "expected percentage" is a number about no board in particular. The exact distribution is a
+ * convolution, computed here by the standard dynamic program over the count.
+ *
+ * Only P(X ≤ k-1) is needed, so the state is truncated at k: for the counts this audit produces
+ * (single digits against thousands of trials) that is O(n·k) rather than O(n²).
+ */
+export function poissonBinomialSurvival(ps: number[], k: number): number {
+  if (k <= 0) return 1;
+  // dp[j] = P(exactly j successes so far), j < k. Mass that reaches k is absorbed and never
+  // returns, which is why truncation is exact rather than an approximation.
+  const dp = new Array<number>(k).fill(0);
+  dp[0] = 1;
+  for (const p of ps) {
+    for (let j = k - 1; j >= 0; j--) {
+      const carried = dp[j];
+      if (carried === 0) continue;
+      dp[j] = carried * (1 - p);
+      if (j + 1 < k) dp[j + 1] += carried * p;
+    }
+  }
+  let below = 0;
+  for (let j = 0; j < k; j++) below += dp[j];
+  return Math.max(0, Math.min(1, 1 - below));
+}
+
+/**
  * Chi-squared statistic and p-value for observed vs expected slot counts.
  * P-value via regularized incomplete gamma (Lanczos log-Γ, series/CF expansion).
  * Returns chi2 stat, degrees of freedom, and p-value.
@@ -73,7 +115,7 @@ export function chiSquaredTest(
 }
 
 /** Chi-squared p-value via regularized upper incomplete gamma function. */
-function chiSquaredPValue(x: number, k: number): number {
+export function chiSquaredPValue(x: number, k: number): number {
   if (k <= 0) return 1;
   if (x <= 0) return 1;
   return 1 - gammaPRegularized(k / 2, x / 2);

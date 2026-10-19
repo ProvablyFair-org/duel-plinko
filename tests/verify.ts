@@ -17,6 +17,7 @@ import {
   phaseBets as filterPhase,
   checkConfigHash,
   PLINKO_CONFIG_HASH,
+  EXPECTED_DATASET_SHA256,
 } from '../src/loader';
 import type { VerifyContext, DeterminismEntry, ChiEntry } from './steps/context';
 import * as commitment     from './steps/commitment';
@@ -25,10 +26,15 @@ import * as payouts        from './steps/payouts';
 import * as dataset        from './steps/dataset';
 import * as antiCircularity from './steps/anti-circularity';
 import * as phaseDStep     from './steps/phase-d';
+import * as liveFit        from './steps/live-fit';
 import * as simulation     from './steps/simulation';
 import * as statistical    from './steps/statistical';
 import * as artifacts      from './steps/artifacts';
+import * as publication    from './steps/publication';
 import { fieldDiff, beyondTolerance, maxima, DIFF_ATOL, DIFF_RTOL } from '../src/diff';
+import { labelFor, profileCoverageBlock } from '../src/profile-map';
+import { runRtpClaimGate, RTP_CLAIM_STEP } from '../src/rtp-settings';
+import { rtpClaimVerdict, RTP_FIGURE_OVERSTATED, RTP_FIGURE_OVERSTATED_EXIT } from '../src/rtp-claim';
 
 // ── Setup ─────────────────────────────────────────────────────────────────────
 
@@ -43,7 +49,7 @@ const cfg = new PlinkoConfig(rawCfg.data);
 
 // ── Dataset Hash Guard (EC-25) — runs before any analysis ─────────────────────
 
-const EXPECTED_HASH = '3cf9359d88220bc800bb32edfe04399f55b909302262928ee3a0582715635267';
+const EXPECTED_HASH = EXPECTED_DATASET_SHA256;
 {
   const buf = loadMasterBuffer();
   const actualHash = sha256Buffer(buf);
@@ -118,6 +124,8 @@ const antiCircResults = antiCircularity.run(ctx);  // Step  17
 const phaseDResults = phaseDStep.run(ctx);          // Step  18
 const simulationResults = simulation.run(ctx);     // Steps 19–20
 const artifactResults = artifacts.run(ctx);        // Step  21
+const publicationResults = publication.run(ctx);   // Step  22
+const liveFitResults = liveFit.run(ctx);           // Step  23
 
 const results: StepResult[] = [
   ...commitmentResults,
@@ -128,6 +136,8 @@ const results: StepResult[] = [
   ...phaseDResults,
   ...simulationResults,
   ...artifactResults,
+  ...publicationResults,
+  ...liveFitResults,
 ];
 
 // ── Informational context (not scored) ────────────────────────────────────────
@@ -141,12 +151,49 @@ for (const item of infoItems) {
   console.log(`  [INFO] ${item.label} — ${item.detail}`);
 }
 
+// ── RTP-CLAIM rule (1.2.0, Methodology v1.1; 1.0.0 agreed on Slack 2026-09-29) ──
+// The per-setting exact RTP table held to the published claim (src/rtp-settings.ts). The package
+// switch RTP_CLAIM_RULE_ENFORCED is true (D3, 2026-10-14). Status OVERSTATED (a house-side miss) is
+// scored on the step carrying PLINKO-19 as an operator-origin FLAG (the profile's policy) and the
+// verdict becomes RTP FIGURE OVERSTATED, exit 5 (rtpClaimVerdict) — never NOT PROVABLY FAIR: the
+// draws themselves pass. Status FAIL means the committed table no longer equals this run (or its
+// pin): a reproduction failure, exit 1, whether or not the rule is enforced; no step moves for it.
+const rtpClaim = runRtpClaimGate();
+console.log('');
+for (const line of rtpClaim.lines) console.log(`  ${line}`);
+const rtpOverstated = rtpClaim.status === 'OVERSTATED';
+if (rtpOverstated) {
+  // This package's StepResult is scored on `pass` + `severity` (src/types.ts), not `status`: mark
+  // the fields the summary counts.
+  const s = results.find(r => r.step === RTP_CLAIM_STEP);
+  if (s && !(s.pass === false && s.severity === 'HARD_FAIL')) {
+    const why = `${RTP_FIGURE_OVERSTATED} (RTP-CLAIM enforced): ${rtpClaim.result.minimalFix}`;
+    s.pass = false;
+    s.severity = 'FLAG';
+    s.origin = 'operator';
+    s.failures = [...s.failures, why];
+    s.summary += ` — ${why}`;
+    // The step printed its own line when it ran, before this rule was scored. Print it again at the
+    // status it is now counted at, so the console agrees with the summary and the emitted record.
+    console.log(`  [FLAG] Step ${s.step} — ${s.name} (re-scored: RTP-CLAIM enforced, ${RTP_FIGURE_OVERSTATED})`);
+    console.log(`    → ${why}`);
+  }
+}
+
 // ── Summary ───────────────────────────────────────────────────────────────────
 
 const passed   = results.filter(r => r.pass).length;
 const failed   = results.filter(r => !r.pass);
 const hardFails = failed.filter(r => r.severity === 'HARD_FAIL');
 const flags    = failed.filter(r => r.severity === 'FLAG');
+// INFO (profile policy INFORMATIONAL — the live-sample fit, Mike 2026-09-29): a deviation is reported,
+// never counted as a flag, and never enters the verdict or the exit code.
+const informational = failed.filter(r => r.severity === 'INFO');
+// A capture-origin FLAG (an auditor-side capture retry reconstructed via commit-reveal) is
+// disclosed but verdict-neutral; only an operator-origin FLAG downgrades to Conditional Pass.
+// Rule adopted 2026-09-22 (Fable QA on PLINKO-04): not a PASS, but not against the verdict.
+const captureFlags  = flags.filter(r => r.origin === 'capture');
+const operatorFlags = flags.filter(r => r.origin !== 'capture');
 
 console.log('\n══════════════════════════════════════════════════════════');
 console.log('  RESULTS SUMMARY');
@@ -162,19 +209,34 @@ if (hardFails.length > 0) {
   }
 }
 
-if (flags.length > 0) {
-  console.log('\n  FLAGS:');
-  for (const r of flags) {
+if (operatorFlags.length > 0) {
+  console.log('\n  FLAGS (verdict-affecting):');
+  for (const r of operatorFlags) {
     console.log(`  ⚠ Step ${r.step}: ${r.name}`);
     for (const f of r.failures.slice(0, 2)) console.log(`    → ${f}`);
   }
 }
 
-const verdict = hardFails.length === 0 && flags.length === 0
-  ? 'PROVABLY FAIR — Full Pass'
-  : hardFails.length > 0
-    ? 'NOT PROVABLY FAIR'
-    : 'PROVABLY FAIR — Conditional Pass';
+if (captureFlags.length > 0) {
+  console.log('\n  CAPTURE-ORIGIN LIMITATIONS (disclosed, verdict-neutral):');
+  for (const r of captureFlags) {
+    console.log(`  ⚑ Step ${r.step}: ${r.name}`);
+    console.log(`    → ${r.summary}`);
+  }
+}
+
+if (informational.length > 0) {
+  console.log('\n  INFORMATIONAL DEVIATIONS (reported, not counted, verdict unchanged):');
+  for (const r of informational) {
+    console.log(`  ℹ Step ${r.step}: ${r.name}`);
+    for (const f of r.failures.slice(0, 2)) console.log(`    → ${f}`);
+  }
+}
+
+// Ranked by the rule's rtpClaimVerdict: a failed draw check (NOT PROVABLY FAIR) > RTP FIGURE
+// OVERSTATED > Conditional Pass > Full Pass. This suite has no INCOMPLETE state.
+const ruled = rtpClaimVerdict({ fails: hardFails.length, complete: true, overstated: rtpOverstated, opFlags: operatorFlags.length });
+const verdict = ruled.verdict;
 
 console.log(`\n  VERDICT: ${verdict}`);
 console.log('══════════════════════════════════════════════════════════\n');
@@ -182,15 +244,20 @@ console.log('══════════════════════�
 // ── Write outputs ──────────────────────────────────────────────────────────────
 
 const output = {
-  runAt: new Date().toISOString(),
   dataset: { bets: bets.length, seeds: seeds.length, phaseA: phaseA.length, phaseB: phaseB.length, phaseC: phaseC.length, phaseD: phaseD.length },
   artifactHashes: {
     dataset: { file: 'data/plinko-master-8100bets.json', expected: EXPECTED_HASH, actual: EXPECTED_HASH, match: true },
     config:  { file: 'plinkoConfig.json', expected: configHashCheck.expected, actual: configHashCheck.actual, match: configHashCheck.match },
   },
   verdict,
-  summary: { passed, hardFails: hardFails.length, flags: flags.length },
-  steps: results,
+  // One summary shape across the Duel packages (Mike's review 2026-09-28, F20).
+  summary: { passed, flags: flags.length, operatorFlags: operatorFlags.length, captureFlags: captureFlags.length, hardFail: hardFails.length, verdict },
+  // Each scored step says which ProvablyFair.org Plinko profile check it implements, so the
+  // conformance matrix is DERIVED from this artifact rather than written by hand and left to go
+  // stale. The label is attached to the emitted record only: src/profile-map.ts cannot change
+  // what any step asserts, and a step that answers no profile check says so explicitly.
+  steps: results.map(r => ({ ...r, ...labelFor(r.step) })),
+  profileCoverage: profileCoverageBlock(),
   informational: infoItems,
 };
 
@@ -242,6 +309,19 @@ fs.writeFileSync(
   JSON.stringify(chiSquaredOutput, null, 2)
 );
 console.log(`  Run products written to: outputs/run/chi-squared-results.json`);
+
+// RUN-ONLY replay precision (finding F2): the bit-identical counts and largest in-tolerance gaps
+// are this machine's arithmetic. They were once inside verification-results.json, where a second
+// CPU moving two p-values by one ulp turned 1,452 into 1,450 and failed the exact integer diff.
+// They live here, under outputs/run/, and nowhere that is compared or pinned.
+fs.writeFileSync(
+  path.join(RUN_DIR, 'replay-precision.json'),
+  JSON.stringify({ runtime: process.versions.node, ...simulation.runPrecision }, null, 2)
+);
+for (const [k, v] of Object.entries(simulation.runPrecision) as [string, any][]) {
+  console.log(`  [RUN-ONLY] ${k}: ${v.withinTolerance}/${v.compared} within tolerance, ${v.bitIdentical} bit-identical on this machine, largest gap ${Number(v.largestGap).toExponential(2)}`);
+}
+console.log(`  Run products written to: outputs/run/replay-precision.json`);
 console.log(`  Committed artifacts NOT modified.`);
 
 // ── Reproduction gate ─────────────────────────────────────────────────────────
@@ -263,10 +343,17 @@ if (!PF_EMIT) {
     { file: 'determinism-log.json',      fresh: determinismOutput },
     { file: 'chi-squared-results.json',  fresh: chiSquaredOutput },
   ];
+  // `npm run test:full` (PF_REGEN=1) has just regenerated the simulation into outputs/run/ with the
+  // generator itself; that regeneration is diffed here too, so outputs/run/diff.json records it with
+  // the runtime (profile PLINKO-28). An absent regeneration under PF_REGEN=1 is a failure, not a skip.
+  if (process.env.PF_REGEN === '1') {
+    targets.push({ file: 'simulation-results.json', fresh: readJsonOrNull(path.join(RUN_DIR, 'simulation-results.json')) ?? '<regeneration absent>' });
+  }
   const perFile = targets.map(t => {
     const committed = readJsonOrNull(path.join(OUTPUTS_DIR, t.file));
-    // `runAt` is a property of the run, not of the evidence, and differs by construction.
-    const diffs = fieldDiff(committed, t.fresh, ['runAt']);
+    // No run-timestamp is emitted into the evidence, so the committed record reproduces
+    // byte-for-byte and there is nothing to exclude from the diff by name.
+    const diffs = fieldDiff(committed, t.fresh, []);
     return { file: t.file, readable: committed !== null, diffs, real: beyondTolerance(diffs) };
   });
   const allDiffs  = perFile.flatMap(p => p.diffs);
@@ -281,8 +368,8 @@ if (!PF_EMIT) {
     beyondToleranceCount: realTotal,
     withinToleranceCount: allDiffs.length - realTotal,
     largestGap: gap,
-    note: 'Field-level diff between the COMMITTED artifacts and THIS RUN. `runAt` is excluded '
-      + 'because it differs by construction. Entries marked `withinTolerance` are the same '
+    note: 'Field-level diff between the COMMITTED artifacts and THIS RUN. No run-timestamp is '
+      + 'emitted, so nothing is excluded by name. Entries marked `withinTolerance` are the same '
       + 'result computed on different hardware and are recorded, not scored. Any entry NOT so '
       + 'marked means this run disagrees with the committed evidence — investigate it; do not '
       + 're-run until it goes away, and do not regenerate the committed artifact to make it go away.',
@@ -308,8 +395,10 @@ if (!PF_EMIT) {
 }
 
 // ── Exit contract ─────────────────────────────────────────────────────────────
-// Framework 1.0: FAIL -> 1, FLAG -> 2, otherwise 0. Until this release the file ended at the
-// verdict, so `NOT PROVABLY FAIR` returned success and anything automated read it as clean.
-// A reproduction beyond tolerance is a FAIL, not a warning: a gate that only prints is not one.
-if (hardFails.length > 0 || reproductionFailures > 0) process.exit(1);
-if (flags.length > 0) process.exit(2);
+// Framework 1.1: FAIL -> 1, RTP FIGURE OVERSTATED -> 5, FLAG -> 2, otherwise 0. Until v1.2.0 the
+// file ended at the verdict, so `NOT PROVABLY FAIR` returned success and anything automated read it
+// as clean. A reproduction beyond tolerance is a FAIL, not a warning: a gate that only prints is not one.
+if (hardFails.length > 0 || reproductionFailures > 0 || !rtpClaim.tableMatches) process.exit(1);
+if (ruled.exit === RTP_FIGURE_OVERSTATED_EXIT) process.exit(RTP_FIGURE_OVERSTATED_EXIT);
+if (operatorFlags.length > 0) process.exit(2);
+// A capture-origin FLAG is disclosed but verdict-neutral: exit 0, so npm test stays green.

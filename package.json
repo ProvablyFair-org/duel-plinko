@@ -1,14 +1,26 @@
 {
   "name": "plinko-audit",
-  "version": "1.0.0",
+  "version": "1.3.0",
   "description": "Provably fair audit \u2014 Duel.com Plinko",
   "engines": {
     "node": "22.x"
   },
   "scripts": {
-    "test": "mocha && npm run verify",
+    "test": "node scripts/check-standalone.mjs && node test.js && node scripts/check-outputs.mjs && node scripts/check-exploit-matrix.mjs && node verify.js",
     "verify": "ts-node tests/verify.ts",
-    "simulate": "ts-node src/simulate.ts"
+    "report": "PF_EMIT=1 ts-node tests/verify.ts",
+    "mutate": "node scripts/mutate.mjs",
+    "simulate": "ts-node src/simulate.ts",
+    "simulate:run": "PF_SIM_OUT=outputs/run ts-node src/simulate.ts",
+    "diff:simulation": "ts-node src/diff-simulation.ts",
+    "test:full": "npm run simulate:run && npm run diff:simulation && PF_REGEN=1 npm test",
+    "release-manifest": "node scripts/release-manifest.mjs",
+    "release-manifest:check": "node scripts/release-manifest.mjs --check",
+    "build": "node scripts/build-standalone.mjs",
+    "check:build": "node scripts/build-standalone.mjs --check",
+    "check:standalone": "node scripts/check-standalone.mjs",
+    "check:site-verifier": "node scripts/check-site-verifier.mjs",
+    "rtp-claim:write": "ts-node src/rtp-settings.ts"
   },
   "devDependencies": {
     "@types/mocha": "^10",

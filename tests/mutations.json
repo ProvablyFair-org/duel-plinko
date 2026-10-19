@@ -1,0 +1,694 @@
+[
+  {
+    "name": "M01 revealed server seed corrupted mid-phase",
+    "step": 1,
+    "runner": "verify",
+    "expect": "[FAIL] Step 1",
+    "guard": "Step 1 recomputes SHA-256 of every revealed plaintext against the commitment the previous record published; a plaintext that does not hash to it is a broken commit-reveal, and the phase-boundary exemption must not absorb it because the phase label does not change here.",
+    "file": "tests/verify.ts",
+    "find": "const revealedMap = revealedSeedMap(seeds);",
+    "replace": "seeds[5].seed.serverSeed = '00'.repeat(32); // MUTATION: plaintext no longer hashes to its commitment\nconst revealedMap = revealedSeedMap(seeds);"
+  },
+  {
+    "name": "M02 declared phase-boundary exemption count loosened",
+    "step": 1,
+    "runner": "verify",
+    "expect": "[FAIL] Step 1",
+    "guard": "The exemption for the three end-of-phase rotations is declared in src/loader.ts and counted. Widening it to four would let one genuine commitment break be forgiven for free — the exact hole the old `!match && phase differs` heuristic left open.",
+    "file": "src/loader.ts",
+    "find": "export const EXPECTED_PHASE_BOUNDARIES = 3;",
+    "replace": "export const EXPECTED_PHASE_BOUNDARIES = 4; // MUTATION: an exemption nobody declared"
+  },
+  {
+    "name": "M03 pre-capture anchor record removed",
+    "step": 2,
+    "runner": "verify",
+    "expect": "[FAIL] Step 2",
+    "guard": "Step 2 requires the chain to be anchored before epoch 0 by the next-seed hash read from the account BEFORE the first rotation. Without it an operator could have generated epoch 0's seed after seeing the first bet and the remaining 165 links would look perfect.",
+    "file": "tests/verify.ts",
+    "find": "const revealedMap = revealedSeedMap(seeds);",
+    "replace": "delete (seeds[0] as { nextSeedPromotion?: unknown }).nextSeedPromotion; // MUTATION: anchor removed\nconst revealedMap = revealedSeedMap(seeds);"
+  },
+  {
+    "name": "M04 pre-capture anchor does not match epoch 0",
+    "step": 2,
+    "runner": "verify",
+    "expect": "[FAIL] Step 2",
+    "guard": "An anchor that is present but does not equal the hash epoch 0 actually ran under anchors nothing. The step compares the two rather than merely recording that a promotion record exists.",
+    "file": "tests/verify.ts",
+    "find": "const revealedMap = revealedSeedMap(seeds);",
+    "replace": "seeds[0].nextSeedPromotion!.previousNextHash = '0'.repeat(64); // MUTATION: anchor points elsewhere\nconst revealedMap = revealedSeedMap(seeds);"
+  },
+  {
+    "name": "M05 commitment swapped in the middle of an epoch",
+    "step": 3,
+    "runner": "verify",
+    "expect": "[FAIL] Step 3",
+    "guard": "Step 3 derives the epoch from the nonce returning to zero in capture order, not from the field under test, so a hash changed mid-round puts two commitments inside one run and is caught. Grouping by the hash itself made this check an identity that could not fail.",
+    "file": "tests/verify.ts",
+    "find": "const revealedMap = revealedSeedMap(seeds);",
+    "replace": "bets[10].response.server_seed_hashed = bets[100].response.server_seed_hashed; // MUTATION: mid-epoch commitment swap\nconst revealedMap = revealedSeedMap(seeds);"
+  },
+  {
+    "name": "M06 nonce out of sequence inside an epoch",
+    "step": 4,
+    "runner": "verify",
+    "expect": "[FAIL] Step 4",
+    "guard": "Step 4 requires each epoch's nonces to be 0..n-1 in order. A gap that is not the single declared capture-retry pattern is a round the operator served and the capture cannot account for.",
+    "file": "tests/verify.ts",
+    "find": "const revealedMap = revealedSeedMap(seeds);",
+    "replace": "bets[3].response.nonce = 42; // MUTATION: nonce stream broken\nconst revealedMap = revealedSeedMap(seeds);"
+  },
+  {
+    "name": "M07 final_slot altered on a captured bet",
+    "step": 5,
+    "runner": "verify",
+    "expect": "[FAIL] Step 5",
+    "guard": "Step 5 recomputes every slot from (server seed, client seed, nonce). An outcome the algorithm does not produce is the whole failure mode a provably-fair audit exists to detect.",
+    "file": "tests/verify.ts",
+    "find": "const revealedMap = revealedSeedMap(seeds);",
+    "replace": "bets[0].response.final_slot = bets[0].response.final_slot === 0 ? 1 : 0; // MUTATION: outcome does not match the seed\nconst revealedMap = revealedSeedMap(seeds);"
+  },
+  {
+    "name": "M08 bit-extraction domain no longer divides by the modulus",
+    "step": 5,
+    "runner": "verify",
+    "expect": "[FAIL] Step 5",
+    "guard": "The modulo-bias bound is computed from the declared extraction parameters and compared against the profile's 2^-32 ceiling. An extraction whose domain leaves a remainder favours the low residue — the board leans — and this is the only assertion in the suite that would notice, since every slot would still recompute correctly.",
+    "file": "src/rng.ts",
+    "find": "  const domainSize = Math.pow(2, 4 * hexChars);",
+    "replace": "  const domainSize = 3; // MUTATION: odd domain, one residue is 2/3 likelier than the other"
+  },
+  {
+    "name": "M07b docusaurus site verifier logic changed and its pin recomputed",
+    "step": 5,
+    "runner": "verify",
+    "expect": "docusaurus site verifier disagrees with src/rng.ts",
+    "guard": "FORGERY. One logic line of the vendored ProvablyFair.org derive.js is changed (row 3 always moves right) and its SHA-256 pin re-computed, as a forger would. The pin now agrees, so only executing the site code on every captured bet and comparing slot and path with src/rng.ts can see it (PLINKO-24).",
+    "edits": [
+      {
+        "file": "verifier-parity/games/plinko/derive.js",
+        "find": "const step = int32 % 2;",
+        "replace": "const step = cursor === 3 ? 1 : int32 % 2;"
+      }
+    ],
+    "repin": [
+      {
+        "file": "src/site-verifier.ts",
+        "find": "dd8417482d2e18fef35894c7ac16e17a61a9eb4166817e3d8533d2160d9b754e",
+        "hashOf": "verifier-parity/games/plinko/derive.js"
+      }
+    ]
+  },
+  {
+    "name": "M07c docusaurus site verifier byte changed without re-pinning",
+    "step": 5,
+    "runner": "verify",
+    "expect": "vendored site verifier does not match its pinned SHA-256",
+    "guard": "The vendored site files are hash-pinned: a copy that is not the pinned bytes must not be executed and reported as the site (PLINKO-24: the package records the hash).",
+    "edits": [
+      {
+        "file": "verifier-parity/games/plinko/derive.js",
+        "find": " * Plinko RNG — browser port",
+        "replace": " * Plinko RNG - browser port"
+      }
+    ]
+  },
+  {
+    "name": "M07d live-site Duel Plinko line changed and the chunk pin recomputed",
+    "step": 5,
+    "runner": "verify",
+    "expect": "live-site verifier disagrees on",
+    "guard": "FORGERY. The Duel Plinko branch of the vendored live page chunk is changed (row 3 always moves right) and its SHA-256 pin recomputed. Only running the page's own verifier on every captured bet and comparing what it prints with src/rng.ts can see it (PLINKO-24, live leg).",
+    "edits": [
+      {
+        "file": "verifier-parity/live-site/chunks/34934e0e762aa37e.js",
+        "find": "a=parseInt((await ie(t,i)).slice(0,8),16)%2",
+        "replace": "a=3===e?1:parseInt((await ie(t,i)).slice(0,8),16)%2"
+      }
+    ],
+    "repin": [
+      {
+        "file": "src/live-site-verifier.ts",
+        "find": "9fb319dec0d79f9bf5851ec8e0052b6b2125e603be03d12b78a0fe99eed817d1",
+        "hashOf": "verifier-parity/live-site/chunks/34934e0e762aa37e.js"
+      }
+    ]
+  },
+  {
+    "name": "M07e live-site chunk byte changed without re-pinning",
+    "step": 5,
+    "runner": "verify",
+    "expect": "vendored live-site verifier does not match its pinned SHA-256",
+    "guard": "The vendored live chunks are hash-pinned; unpinned bytes must not be run and reported as the live page.",
+    "edits": [
+      {
+        "file": "verifier-parity/live-site/chunks/34934e0e762aa37e.js",
+        "find": "a=parseInt((await ie(t,i)).slice(0,8),16)%2",
+        "replace": "a=parseInt((await ie(t,i)).slice(0,8),16)%2 "
+      }
+    ]
+  },
+  {
+    "name": "M07f declared site multiplier divergence no longer matches the measurement",
+    "step": 5,
+    "runner": "verify",
+    "expect": "retire or update the declaration",
+    "guard": "The docusaurus multiplier divergence (L5) is declared as an exact count, not tolerated as a class: if the site is fixed, or diverges on more bets, the declaration must change with it. Step 5 compares the measured bet and cell counts with the declared ones.",
+    "edits": [
+      {
+        "file": "src/site-verifier.ts",
+        "find": "  betsAffected: 224,",
+        "replace": "  betsAffected: 223,"
+      }
+    ]
+  },
+  {
+    "name": "M07g operator Verify-tab file logic changed and its pin recomputed",
+    "step": 5,
+    "runner": "verify",
+    "expect": "operator Verify-tab code disagrees",
+    "guard": "FORGERY. One logic line of Duel's own vendored Plinko Verify-tab code is changed (the direction becomes value % 2 on the digest's second word) and its SHA-256 pin re-computed, as a forger would. Only executing that file on every captured bet and comparing its bucket with the served one and its path with src/rng.ts can see it (PLINKO-09).",
+    "edits": [
+      {
+        "file": "evidence/verify-tab/duel-verify-tab-plinko-2026-09-25.js",
+        "find": "const value = parseInt(bounceHash.slice(0, 8), 16);",
+        "replace": "const value = parseInt(bounceHash.slice(8, 16), 16);"
+      }
+    ],
+    "repin": [
+      {
+        "file": "src/operator-verifier.ts",
+        "find": "8b3366d1e91edb572cac288e0a853d2b560b2cf5c4468c6848439f957465c9ce",
+        "hashOf": "evidence/verify-tab/duel-verify-tab-plinko-2026-09-25.js"
+      }
+    ]
+  },
+  {
+    "name": "M07h operator Verify-tab file byte changed without re-pinning",
+    "step": 5,
+    "runner": "verify",
+    "expect": "operator Verify-tab code or its runner does not match its pinned SHA-256",
+    "guard": "The vendored operator file must hash to its pin before it runs (PLINKO-09): a one-byte edit in a comment is caught.",
+    "file": "evidence/verify-tab/duel-verify-tab-plinko-2026-09-25.js",
+    "find": "// Code written in javascript",
+    "replace": "// Code written in JavaScript"
+  },
+  {
+    "name": "M07i src/rng.ts cites an operator line that does not carry the quoted text",
+    "step": 5,
+    "runner": "verify",
+    "expect": "src/rng.ts operator citations",
+    "guard": "Every citation in src/rng.ts OPERATOR_SOURCE_CITES must quote the pinned operator file at the line it names (PLINKO-09).",
+    "file": "src/rng.ts",
+    "find": "{ line: 60, text: 'position += (value % 2);'",
+    "replace": "{ line: 61, text: 'position += (value % 2);'"
+  },
+  {
+    "name": "M09 coincidence counted on the slot but scored against the path null",
+    "step": 6,
+    "runner": "verify",
+    "expect": "[FAIL] Step 6",
+    "guard": "Two independent drops share a SLOT about one time in six and share a PATH only 2^-rows of the time. Scoring one against the other's null is exactly the confusion the exact-null check exists to prevent; the floor (an epoch where nothing changed) does not fire here, so only the Poisson-binomial survival catches it.",
+    "file": "tests/steps/determinism.ts",
+    "find": "        if (wrong.path === real.path) samePathCount++;",
+    "replace": "        if (wrong.slot === real.slot) samePathCount++; // MUTATION: wrong statistic for this null"
+  },
+  {
+    "name": "M10 win_amount does not equal stake x multiplier",
+    "step": 7,
+    "runner": "verify",
+    "expect": "[FAIL] Step 7",
+    "guard": "Step 7 recomputes the payout for every bet. A win_amount that does not follow from the stake and the multiplier is money the player was not paid.",
+    "file": "tests/verify.ts",
+    "find": "const revealedMap = revealedSeedMap(seeds);",
+    "replace": "bets[0].response.win_amount = '1.23456789'; // MUTATION: payout does not follow from stake x multiplier\nconst revealedMap = revealedSeedMap(seeds);"
+  },
+  {
+    "name": "M11 final_slot outside the board",
+    "step": 8,
+    "runner": "verify",
+    "expect": "[FAIL] Step 8",
+    "guard": "Step 8 rejects a landing slot outside [0, rows] before looking anything up in the multiplier table — an index the board cannot produce would otherwise be resolved against a table entry that does not exist.",
+    "file": "tests/verify.ts",
+    "find": "const revealedMap = revealedSeedMap(seeds);",
+    "replace": "bets[1].response.final_slot = 99; // MUTATION: slot off the board\nconst revealedMap = revealedSeedMap(seeds);"
+  },
+  {
+    "name": "M12 Phase C outcome altered",
+    "step": 9,
+    "runner": "verify",
+    "expect": "[FAIL] Step 9",
+    "guard": "Phase C is the second code path (scaling-edge stakes). Step 9 recomputes it against the same algorithm, so a path that diverges only under the alternative code path is caught rather than averaged away.",
+    "file": "tests/verify.ts",
+    "find": "const phaseA = filterPhase(bets, 'A');",
+    "replace": "{ const c = bets.filter(b => b.phase === 'C')[0]; c.response.final_slot = c.response.final_slot === 0 ? 1 : 0; } // MUTATION: Phase C outcome does not match its seed\nconst phaseA = filterPhase(bets, 'A');"
+  },
+  {
+    "name": "M13 payout multiplier off the declared table",
+    "step": 10,
+    "runner": "verify",
+    "expect": "[FLAG:operator] Step 10",
+    "guard": "Step 10 requires every effective_edge group to pay from the same declared table. A multiplier that appears in no table is a payout with no published basis.",
+    "file": "tests/verify.ts",
+    "find": "const revealedMap = revealedSeedMap(seeds);",
+    "replace": "bets[0].response.payout_multiplier = '3.14159265'; // MUTATION: multiplier from no declared table\nconst revealedMap = revealedSeedMap(seeds);"
+  },
+  {
+    "name": "M14 a published configuration never captured",
+    "step": 11,
+    "runner": "verify",
+    "expect": "[FLAG:operator] Step 11",
+    "guard": "Step 11 requires every published configuration to reach the Phase A floor. A board the operator sells but the capture never played is a board this audit says nothing about, and the step must say so rather than average it into 26 others.",
+    "file": "tests/verify.ts",
+    "find": "const phaseA = filterPhase(bets, 'A');",
+    "replace": "for (let i = bets.length - 1; i >= 0; i--) if (bets[i].phase === 'A' && bets[i].request.rows === 8 && bets[i].request.risk === 'low') bets.splice(i, 1); // MUTATION: one configuration never captured\nconst phaseA = filterPhase(bets, 'A');"
+  },
+  {
+    "name": "M15 cell-coverage enumeration silenced",
+    "step": 11,
+    "runner": "verify",
+    "expect": "BEYOND TOLERANCE",
+    "guard": "The never-paid cells and their share of theoretical RTP are published evidence, not decoration. Silencing the enumeration leaves every step PASS and is caught by the field-level diff against the committed artifact, which is the guard that makes an emitted number load-bearing.",
+    "file": "tests/steps/dataset.ts",
+    "find": "        if (!observedCells.has(`${rows}|${risk}|${k}`)) {",
+    "replace": "        if (false) { // MUTATION: coverage gap no longer enumerated"
+  },
+  {
+    "name": "M16 one commitment removed from the capture",
+    "step": 12,
+    "runner": "verify",
+    "expect": "[FAIL] Step 12",
+    "guard": "Every surviving epoch still holds exactly 50 bets, so the epoch-SIZE check is untouched; only the epoch COUNT against src/loader.ts notices that a whole commitment is gone. A shrunken capture that re-pins its own hash passes everything else.",
+    "file": "tests/verify.ts",
+    "find": "const revealedMap = revealedSeedMap(seeds);",
+    "replace": "bets.splice(0, 50); // MUTATION: one whole epoch deleted\nconst revealedMap = revealedSeedMap(seeds);"
+  },
+  {
+    "name": "M17 multiplier table forged and the config hash re-pinned",
+    "step": 13,
+    "runner": "verify",
+    "expect": "[FLAG:operator] Step 13",
+    "guard": "FORGERY. The multiplier table is edited and the SHA-256 pin recomputed so the pre-flight config guard is satisfied — which is what a forger would do. Step 13's symmetry identity over the full table, and the live bets checked against it, are what remain.",
+    "edits": [
+      {
+        "file": "plinkoConfig.json",
+        "find": "\"multipliers\":[\"5.65180109\"",
+        "replace": "\"multipliers\":[\"5.75180109\""
+      }
+    ],
+    "repin": [
+      {
+        "file": "src/loader.ts",
+        "find": "78f0a39201a8c24fd1577143732e004f77e27d4d36efeedc6b3f7b93b2078fed",
+        "hashOf": "plinkoConfig.json"
+      }
+    ]
+  },
+  {
+    "name": "M18 multiplier table edited without re-pinning",
+    "step": 13,
+    "runner": "verify",
+    "expect": "ABORT: plinkoConfig.json hash mismatch",
+    "guard": "The pre-flight guard refuses to score a run against a multiplier table that is not the audited artifact, before any step runs.",
+    "file": "plinkoConfig.json",
+    "find": "\"multipliers\":[\"5.65180109\"",
+    "replace": "\"multipliers\":[\"5.75180109\""
+  },
+  {
+    "name": "M19 bet relabelled to an undeclared phase",
+    "step": 14,
+    "runner": "verify",
+    "expect": "[FAIL] Step 14",
+    "guard": "Step 14 validates the phase label AND compares every per-phase count against the capture plan in src/loader.ts, so a relabelled bet cannot quietly move between populations.",
+    "file": "tests/verify.ts",
+    "find": "const revealedMap = revealedSeedMap(seeds);",
+    "replace": "bets[0].phase = 'Z' as 'A'; // MUTATION: phase the plan never declared\nconst revealedMap = revealedSeedMap(seeds);"
+  },
+  {
+    "name": "M20 dataset altered and the pre-flight abort disabled",
+    "step": 15,
+    "runner": "verify",
+    "expect": "[FAIL] Step 15",
+    "guard": "Step 15 used to call pass() unconditionally: it printed the two hashes and reported PASS whatever they were. With the pre-flight guard switched off, a scored step that cannot fail is the only thing between a doctored dataset and a Full Pass — so the step now does its own comparison against the pin in src/loader.ts and fails.",
+    "edits": [
+      {
+        "file": "data/plinko-master-8100bets.json",
+        "find": "\"schema\": \"duel-plinko-capture-v3\"",
+        "replace": "\"schema\": \"duel-plinko-capture-v4\""
+      },
+      {
+        "file": "tests/verify.ts",
+        "find": "  if (actualHash !== EXPECTED_HASH) {",
+        "replace": "  if (false) { // MUTATION: pre-flight dataset abort disabled"
+      }
+    ]
+  },
+  {
+    "name": "M21 dataset altered with the pre-flight abort intact",
+    "step": 15,
+    "runner": "verify",
+    "expect": "ABORT: dataset hash mismatch",
+    "guard": "The dataset of record is pinned by content and the verifier refuses to score anything else, before any step runs.",
+    "file": "data/plinko-master-8100bets.json",
+    "find": "\"schema\": \"duel-plinko-capture-v3\"",
+    "replace": "\"schema\": \"duel-plinko-capture-v4\""
+  },
+  {
+    "name": "M22 declared house edge forged and the config hash re-pinned",
+    "step": 16,
+    "runner": "verify",
+    "expect": "[FAIL] Step 16",
+    "guard": "FORGERY. The published edge of one stake bracket is doubled and the config pin recomputed. Step 16 compares each bracket-0 edge against the declared 0.001 rather than against whatever the file now says.",
+    "edits": [
+      {
+        "file": "plinkoConfig.json",
+        "find": "\"house_edge\":\"0.001\"",
+        "replace": "\"house_edge\":\"0.002\""
+      }
+    ],
+    "repin": [
+      {
+        "file": "src/loader.ts",
+        "find": "78f0a39201a8c24fd1577143732e004f77e27d4d36efeedc6b3f7b93b2078fed",
+        "hashOf": "plinkoConfig.json"
+      }
+    ]
+  },
+  {
+    "name": "M23 exhaustive enumeration walks one row short",
+    "step": 17,
+    "runner": "verify",
+    "expect": "[FAIL] Step 17",
+    "guard": "The anti-circularity argument rests on deriving slot probabilities without the operator's numbers and without a formula: every path through the board is walked and the landings counted. An enumeration that drops a row produces a different distribution and must not agree with Pascal's triangle.",
+    "file": "tests/steps/anti-circularity.ts",
+    "find": "    for (let cursor = 0; cursor < rows; cursor++) slot += (path >> cursor) & 1;",
+    "replace": "    for (let cursor = 0; cursor < rows - 1; cursor++) slot += (path >> cursor) & 1; // MUTATION: one row never walked"
+  },
+  {
+    "name": "M24 Phase D collapsed to a single client seed",
+    "step": 18,
+    "runner": "verify",
+    "expect": "[FAIL] Step 18",
+    "guard": "Phase D exists to vary the player-set client seed. One seed across the whole phase is not that experiment, and the distinct-seed floor is read from src/loader.ts rather than from the data.",
+    "file": "tests/verify.ts",
+    "find": "const phaseA = filterPhase(bets, 'A');",
+    "replace": "for (const b of bets) if (b.phase === 'D') b.response.client_seed = 'pfauditfixed'; // MUTATION: the phase no longer varies the seed\nconst phaseA = filterPhase(bets, 'A');"
+  },
+  {
+    "name": "M25 simulated RTP scalar doctored and the artifact re-pinned",
+    "step": 19,
+    "runner": "verify",
+    "expect": "[FAIL] Step 19",
+    "guard": "FORGERY. A headline scalar is edited and the artifact pin recomputed, so Step 21 is satisfied. Step 19 re-derives the RTP from the histogram in the same file and the artifact's own scalar has to agree with it — the check that stops a published number being simply asserted.",
+    "edits": [
+      {
+        "file": "outputs/simulation-results.json",
+        "find": "\"simulatedRTP\": 0.9989357630145287",
+        "replace": "\"simulatedRTP\": 0.9991357630145287"
+      }
+    ],
+    "repin": [
+      {
+        "file": "src/artifact-pins.ts",
+        "find": "b7744254a4d331158ab8f789581c37ecf64aeec123dcf71a651cc13859699514",
+        "hashOf": "outputs/simulation-results.json"
+      }
+    ]
+  },
+  {
+    "name": "M26 histograms synthesised from the binomial and the artifact re-pinned",
+    "step": 19,
+    "runner": "verify",
+    "expect": "[FAIL] Step 19",
+    "guard": "FORGERY, and the one an ordinary recompute cannot see. Each census is replaced by round(binomial x N): it sums to the right total, re-derives the right RTP and matches the multiplier table. What it has no way to fake is dispersion — the chi-squared collapses toward zero — which is what the p-value ceiling and the chi-squared/df floor exist to catch.",
+    "transform": {
+      "file": "outputs/simulation-results.json",
+      "name": "smooth-histograms"
+    },
+    "repin": [
+      {
+        "file": "src/artifact-pins.ts",
+        "find": "b7744254a4d331158ab8f789581c37ecf64aeec123dcf71a651cc13859699514",
+        "hashOf": "outputs/simulation-results.json"
+      }
+    ]
+  },
+  {
+    "name": "M27 convergence point moved by one unit in the last place",
+    "step": 19,
+    "runner": "verify",
+    "expect": "[FAIL] Step 19",
+    "guard": "The published convergence trace is replayed from the pinned seeds and compared with NO tolerance. A trace is a picture that can be drawn to say anything unless it is bound to an experiment someone can re-run; one bit of drift proves the binding is real.",
+    "edits": [
+      {
+        "file": "outputs/simulation-results.json",
+        "find": "\"rtp\": 98.4624494349993",
+        "replace": "\"rtp\": 98.4624494349994"
+      }
+    ],
+    "repin": [
+      {
+        "file": "src/artifact-pins.ts",
+        "find": "b7744254a4d331158ab8f789581c37ecf64aeec123dcf71a651cc13859699514",
+        "hashOf": "outputs/simulation-results.json"
+      }
+    ]
+  },
+  {
+    "name": "M27b tail census forged (edge slots swapped) and the artifact re-pinned",
+    "step": 19,
+    "runner": "verify",
+    "expect": "census — replayed slot counts",
+    "guard": "FORGERY the histogram checks cannot see. The first configuration's slot-0 and slot-8 counts are swapped: the board is symmetric, so the RTP, chi-squared and p-value re-derived from the histogram are unchanged and no convergence point moves — the former prefix replay (first 10,000 rounds) passed it. Only replaying all 1,000,000 rounds and comparing the census catches it (PLINKO-20).",
+    "transform": {
+      "file": "outputs/simulation-results.json",
+      "name": "swap-symmetric-census"
+    },
+    "repin": [
+      {
+        "file": "src/artifact-pins.ts",
+        "find": "b7744254a4d331158ab8f789581c37ecf64aeec123dcf71a651cc13859699514",
+        "hashOf": "outputs/simulation-results.json"
+      }
+    ]
+  },
+  {
+    "name": "M28 pinned simulation seed altered",
+    "step": 19,
+    "runner": "verify",
+    "expect": "[FAIL] Step 19",
+    "guard": "The pinned seeds ARE the experiment. If the committed artifact could have come from any seed, pinning them is ceremony; the replay makes the claim testable in both directions.",
+    "file": "src/sim-seeds.ts",
+    "find": "{ server: '4734da3b9ebf8b9bf05461f2f200a0ec5e30b1d86958d320dbaff44946afe308'",
+    "replace": "{ server: '5734da3b9ebf8b9bf05461f2f200a0ec5e30b1d86958d320dbaff44946afe308'"
+  },
+  {
+    "name": "M29 Pass 2 sample size doctored and the artifact re-pinned",
+    "step": 20,
+    "runner": "verify",
+    "expect": "[FAIL] Step 20",
+    "guard": "FORGERY. Pass 2's power comes from 10,000 nonces per revealed seed; halving it while keeping the verdicts would report the same conclusion off half the evidence. Step 20 asserts the declared sample size rather than reading it.",
+    "edits": [
+      {
+        "file": "outputs/simulation-results.json",
+        "find": "\"nonces_per_seed\": 10000",
+        "replace": "\"nonces_per_seed\": 5000"
+      }
+    ],
+    "repin": [
+      {
+        "file": "src/artifact-pins.ts",
+        "find": "b7744254a4d331158ab8f789581c37ecf64aeec123dcf71a651cc13859699514",
+        "hashOf": "outputs/simulation-results.json"
+      }
+    ]
+  },
+  {
+    "name": "M29b every served early window pays half (Test C gate)",
+    "step": 20,
+    "runner": "verify",
+    "expect": "epochs flagged at p ≤ 0.01; Poisson-binomial survival",
+    "guard": "The Test C family rule and pooled z must be reachable: if the windows players were exposed to paid half their exact expectation, the calibrated null flags them and the step fails (PLINKO-21).",
+    "file": "tests/steps/simulation.ts",
+    "find": "if (n < P2_EARLY) S += pay; else Sref += pay;",
+    "replace": "if (n < P2_EARLY) S += pay * 0.5; else Sref += pay; // MUTATION: every early window pays half"
+  },
+  {
+    "name": "M29c early AND reference windows pay half (Test C broad branch)",
+    "step": 20,
+    "runner": "verify",
+    "expect": "BROAD flag(s)",
+    "guard": "A seed that pays short everywhere — early window and the 9,950-nonce reference window alike — is a broad flag and a FAIL on its own, whatever the family count says (PLINKO-21 'broad flags → hard fail').",
+    "file": "tests/steps/simulation.ts",
+    "find": "if (n < P2_EARLY) S += pay; else Sref += pay;",
+    "replace": "if (n < P2_EARLY) S += pay * 0.5; else Sref += pay * 0.5; // MUTATION: the whole seed pays half"
+  },
+  {
+    "name": "M29d Test B p-value forged in one row and the artifact re-pinned",
+    "step": 20,
+    "runner": "verify",
+    "expect": "stored early_p",
+    "guard": "FORGERY. Tests A and B used to be read from the artifact. They are now re-derived row by row from the replayed seeds, so a doctored p-value re-pinned with the artifact disagrees with the replay.",
+    "edits": [
+      {
+        "file": "outputs/simulation-results.json",
+        "find": "\"early_p\": 0.12820654061313808",
+        "replace": "\"early_p\": 0.02820654061313808"
+      }
+    ],
+    "repin": [
+      {
+        "file": "src/artifact-pins.ts",
+        "find": "b7744254a4d331158ab8f789581c37ecf64aeec123dcf71a651cc13859699514",
+        "hashOf": "outputs/simulation-results.json"
+      }
+    ]
+  },
+  {
+    "name": "M29e Pass 2 replay reads the wrong nonce",
+    "step": 20,
+    "runner": "verify",
+    "expect": "captured bet(s) not reproduced by the replay",
+    "guard": "The replay is bound to the capture: every captured bet's slot is re-read from the replayed path at its own nonce. A replay that scans the wrong nonces is caught before any statistic is computed from it.",
+    "file": "src/pass2-replay.ts",
+    "find": "j.nonceStart + i, j.cursors",
+    "replace": "j.nonceStart + i + 1, j.cursors"
+  },
+  {
+    "name": "M29f eight epochs' early windows pay half (Test C marginal FLAG)",
+    "step": 20,
+    "runner": "verify",
+    "expect": "marginal Test C excess",
+    "guard": "The profile's middle branch must be reachable too: a modest excess of flagged epochs — family survival between 0.001 and 0.01 — is a disclosed FLAG, not a pass and not a hard fail (PLINKO-21 'a marginal excess → FLAG').",
+    "file": "tests/steps/simulation.ts",
+    "find": "if (n < P2_EARLY) S += pay; else Sref += pay;",
+    "replace": "if (n < P2_EARLY) S += pay * (ei < 8 ? 0.5 : 1); else Sref += pay; // MUTATION: eight epochs' early windows pay half"
+  },
+  {
+    "name": "M30 pinned artifact of record removed",
+    "step": 21,
+    "runner": "verify",
+    "expect": "[FAIL] Step 21",
+    "guard": "An absent artifact is its own defect class: 'not there' must not read as 'nothing wrong'. Step 21 re-hashes every artifact of record and treats absence as a hard fail rather than skipping it.",
+    "delete": [
+      "outputs/determinism-log.json"
+    ]
+  },
+  {
+    "name": "M31 HMAC key used raw instead of hex-decoded",
+    "step": 5,
+    "runner": "mocha",
+    "expect": "failing",
+    "guard": "The key encoding is the single most common way a Plinko re-implementation silently diverges from the operator. The known-answer vectors are chosen so only the hex-decoded key reproduces them.",
+    "file": "src/rng.ts",
+    "find": "  return computeSlotFromBuffer(Buffer.from(serverSeed, 'hex'), clientSeed, nonce, rows);",
+    "replace": "  return computeSlotFromBuffer(Buffer.from(serverSeed), clientSeed, nonce, rows); // MUTATION: key not hex-decoded"
+  },
+  {
+    "name": "M32 direction bit read from the wrong digest window",
+    "step": 5,
+    "runner": "mocha",
+    "expect": "failing",
+    "guard": "The declared extraction reads the first four bytes of each digest. Reading a different window is a different RNG; the captured-bet vectors and the full-dataset reproduction both reject it.",
+    "file": "src/rng.ts",
+    "find": "  hexChars: 8,",
+    "replace": "  hexChars: 4, // MUTATION: different digest window"
+  },
+  {
+    "name": "M33 a stale hash published in a chapter",
+    "step": 22,
+    "runner": "verify",
+    "expect": "[FAIL] Step 22",
+    "guard": "A hash quoted in prose names evidence. If it resolves to no pin and to nothing in the audited dataset, the chapter is describing a capture this package does not ship — which is exactly what the scan found in findings.md and rng-algorithm-analysis.md the first time it ran.",
+    "file": "README.md",
+    "find": "# ",
+    "replace": "<!-- MUTATION: 4b1d1f7e2c9a0d5e8f3b6a2c7d4e9f0a1b2c3d4e5f60718293a4b5c6d7e8f901 -->\n# "
+  },
+  {
+    "name": "M34 drift scan given nothing to read",
+    "step": 22,
+    "runner": "verify",
+    "expect": "[FAIL] Step 22",
+    "guard": "A scan that resolves every token because it read no tokens is the failure mode a coverage check exists to catch: zero unresolved must not be reachable by looking at nothing.",
+    "file": "tests/steps/publication.ts",
+    "find": "  const chapters = fs.readdirSync(root).filter(f => f.endsWith('.md')).sort();",
+    "replace": "  const chapters = fs.readdirSync(root).filter(f => f.endsWith('.no-such-suffix')).sort(); // MUTATION: nothing to scan"
+  },
+  {
+    "name": "M35 Step 23 expected slot distribution swapped from binomial to uniform",
+    "step": 23,
+    "runner": "verify",
+    "expect": "[INFO] Step 23",
+    "guard": "Step 23 fits the pooled live drops against the independent binomial C(rows,k)/2^rows. Replace the expected distribution with a flat 1/(rows+1) and the real binomial-shaped drops misfit, chi-squared explodes and the step must report INFO (informational: not counted, verdict unchanged — profile policy INFORMATIONAL, Mike 2026-09-29; verify exits non-zero because the committed Step 23 record no longer reproduces). A fit step that cannot notice the wrong reference distribution is testing nothing — before this entry Step 23 was the one scored step with no killing mutation.",
+    "file": "tests/steps/live-fit.ts",
+    "find": "const exp = freq.map((_, s) => n * binomProb(r, s));",
+    "replace": "const exp = freq.map((_, s) => n * (1 / (r + 1)));"
+  },
+  {
+    "name": "MC3a one board misses its stated figure (16 rows high, both edge slots 900×), table and record regenerated, simulation NOT re-run: only the stale Pass 1 fields fail",
+    "step": 19,
+    "runner": "test",
+    "expect": "theoreticalRTP in the artifact differs from the committed multiplier table",
+    "expectExit": 1,
+    "regen": [
+      "rtp-table",
+      "record"
+    ],
+    "guard": "FIXPASS2 class C3, 14 Oct 2026: (i) the two edge slots (0 and 16) of one board no captured bet landed in (16 rows, high risk, bracket 0, probability 1/65,536 each) lowered 1009.33110594 → 900.00000000 in plinkoConfig.json (its pin in src/loader.ts re-made), the RTP table and the record regenerated: that board returns 99.566348 %, 0.334 pp under the flat 99.9 % claim, and RTP-CLAIM reports RTP FIGURE OVERSTATED. The run still ends exit 1, and this entry pins down why: the pinned Pass 1 simulation carries each board's theoretical and simulated RTP, computed from the multipliers, so Step 19 fails on the stale artifact (\"theoreticalRTP in the artifact differs from the committed multiplier table\") and Step 22 on the moved config pin. Bringing those up to date needs npm run simulate, which is not run here. What C3 removed is checked here too: runner test runs mocha first (the unit test that held every board to the stated 99.9 % used to fail npm test), and Step 19 no longer fails a board for paying other than 1 − its bracket-0 edge.",
+    "file": "plinkoConfig.json",
+    "find": "\"multipliers\":[\"1009.33110594\",\"131.21304378\",\"26.24260875\",\"9.08397996\",\"4.03732442\",\"2.01866221\",\"0.20186622\",\"0.20186622\",\"0.20186622\",\"0.20186622\",\"0.20186622\",\"2.01866221\",\"4.03732442\",\"9.08397996\",\"26.24260875\",\"131.21304378\",\"1009.33110594\"]",
+    "replace": "\"multipliers\":[\"900.00000000\",\"131.21304378\",\"26.24260875\",\"9.08397996\",\"4.03732442\",\"2.01866221\",\"0.20186622\",\"0.20186622\",\"0.20186622\",\"0.20186622\",\"0.20186622\",\"2.01866221\",\"4.03732442\",\"9.08397996\",\"26.24260875\",\"131.21304378\",\"900.00000000\"]",
+    "repin": [
+      {
+        "file": "src/loader.ts",
+        "find": "78f0a39201a8c24fd1577143732e004f77e27d4d36efeedc6b3f7b93b2078fed",
+        "hashOf": "plinkoConfig.json"
+      }
+    ]
+  },
+  {
+    "name": "MC3as the same change as MC3a, RTP table NOT regenerated: a stale table is a reproduction failure",
+    "step": 19,
+    "runner": "verify",
+    "expect": "DIFFERS from this run",
+    "expectExit": 1,
+    "guard": "Ruling 14 Oct 2026 (FIXPASS2): a committed RTP table that does not equal the run or its pin is a reproduction failure, exit 1, miss or no miss. MC3a without regenerating the table must end exit 1 with the table reported as differing, never exit 5: the miss is only reported on a consistent package.",
+    "file": "plinkoConfig.json",
+    "find": "\"multipliers\":[\"1009.33110594\",\"131.21304378\",\"26.24260875\",\"9.08397996\",\"4.03732442\",\"2.01866221\",\"0.20186622\",\"0.20186622\",\"0.20186622\",\"0.20186622\",\"0.20186622\",\"2.01866221\",\"4.03732442\",\"9.08397996\",\"26.24260875\",\"131.21304378\",\"1009.33110594\"]",
+    "replace": "\"multipliers\":[\"900.00000000\",\"131.21304378\",\"26.24260875\",\"9.08397996\",\"4.03732442\",\"2.01866221\",\"0.20186622\",\"0.20186622\",\"0.20186622\",\"0.20186622\",\"0.20186622\",\"2.01866221\",\"4.03732442\",\"9.08397996\",\"26.24260875\",\"131.21304378\",\"900.00000000\"]",
+    "repin": [
+      {
+        "file": "src/loader.ts",
+        "find": "78f0a39201a8c24fd1577143732e004f77e27d4d36efeedc6b3f7b93b2078fed",
+        "hashOf": "plinkoConfig.json"
+      }
+    ]
+  },
+  {
+    "name": "MC3b the stated figure raised in the claim source: 99.9 % -> 100.1 %",
+    "step": 19,
+    "runner": "test",
+    "expect": "VERDICT: RTP FIGURE OVERSTATED",
+    "expectExit": 5,
+    "regen": [
+      "rtp-table",
+      "record"
+    ],
+    "guard": "FIXPASS2 class C3, 14 Oct 2026: (ii) the published figure raised where the claim is stated (src/rtp-settings.ts RTP_CLAIM, bracket 0 house_edge 0.001) to 100.1 %, 0.2 pp above what every setting really returns: every setting misses by more than the 0.1 pp band, so the run must end RTP FIGURE OVERSTATED, exit 5. Table and record regenerated in the copy. Runner test = mocha then verify, as npm test runs them: no unit test, label check or operator-FLAG branch may end the run first.",
+    "file": "src/rtp-settings.ts",
+    "find": "  kind: 'flat',\n  rtp: '0.999',",
+    "replace": "  kind: 'flat',\n  rtp: '1.001', // MUTATION: stated figure raised"
+  },
+  {
+    "name": "MC3bs the same change as MC3b, RTP table NOT regenerated: a stale table is a reproduction failure",
+    "step": 19,
+    "runner": "verify",
+    "expect": "DIFFERS from this run",
+    "expectExit": 1,
+    "guard": "Ruling 14 Oct 2026 (FIXPASS2): a committed RTP table that does not equal the run or its pin is a reproduction failure, exit 1, miss or no miss. MC3b without regenerating the table must end exit 1 with the table reported as differing, never exit 5: the miss is only reported on a consistent package.",
+    "file": "src/rtp-settings.ts",
+    "find": "  kind: 'flat',\n  rtp: '0.999',",
+    "replace": "  kind: 'flat',\n  rtp: '1.001', // MUTATION: stated figure raised"
+  }
+]

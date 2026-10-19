@@ -9,6 +9,15 @@ const CONFIG_FILE = path.join(__dirname, '..', 'plinkoConfig.json');
 
 export const PLINKO_CONFIG_HASH = '78f0a39201a8c24fd1577143732e004f77e27d4d36efeedc6b3f7b93b2078fed';
 
+/**
+ * The dataset of record, by content.
+ *
+ * Declared here rather than beside the pre-flight guard in tests/verify.ts so that the guard and
+ * the scored step that reports the comparison read ONE constant. Two copies of a pin are two
+ * places it can be loosened, and only one of them is in the published evidence.
+ */
+export const EXPECTED_DATASET_SHA256 = '3cf9359d88220bc800bb32edfe04399f55b909302262928ee3a0582715635267';
+
 export function loadDataset(): Dataset {
   const raw = fs.readFileSync(MASTER_FILE, 'utf8');
   return JSON.parse(raw) as Dataset;
@@ -114,3 +123,27 @@ export const EXPECTED_BETS  = 8100;
 export const EXPECTED_SEEDS = 166;
 export const EXPECTED_PHASE_BETS: Readonly<Record<string, number>> =
   Object.freeze({ A: 5400, B: 2000, C: 200, D: 500 });
+
+/** Bets per commitment. The capture rotates the server seed every 50 rounds, in all four phases. */
+export const EXPECTED_EPOCH_SIZE = 50;
+
+/**
+ * Commitments the capture plan covers: 8100 bets / 50 per epoch. Asserted separately from the
+ * epoch SIZE because the two fail differently — a uniform shrink keeps every epoch the right
+ * size and only the count notices, and a merge keeps the count and only the size notices.
+ */
+export const EXPECTED_EPOCHS = 162;
+
+/**
+ * Phase transitions in the capture plan: A→B, B→C, C→D.
+ *
+ * At each of these the end-of-phase rotation reveals the seed of the epoch that phase ENDED on,
+ * not the one the next phase begins with, so the plaintext at that index does not hash to the
+ * preceding record's commitment. That is a property of the capture plan, known in advance and
+ * bounded by it — three transitions, no more — which is what makes it a declared exemption
+ * rather than a heuristic that silently absorbs a genuine commitment break.
+ */
+export const EXPECTED_PHASE_BOUNDARIES = 3;
+
+/** Distinct player-set client seeds the plan drives through Phase D. */
+export const EXPECTED_PHASE_D_CLIENT_SEEDS = 10;

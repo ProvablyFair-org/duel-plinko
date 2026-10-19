@@ -5,10 +5,10 @@
 
 import type { StepResult, RiskLevel } from '../../src/types';
 import { computeSlot } from '../../src/rng';
-import { pass, fail, VerifyContext } from './context';
+import { pass, fail, VerifyContext, tag } from './context';
 
 export function run(ctx: VerifyContext): StepResult[] {
-  const { bets, phaseC, cfg, revealedMap, dataset } = ctx;
+  const { bets, phaseB, phaseC, cfg, revealedMap, dataset } = ctx;
   const results: StepResult[] = [];
 
   // ── Step 7: Payout Math (EC-11, EC-18) ───────────────────────────────────────
@@ -54,7 +54,7 @@ export function run(ctx: VerifyContext): StepResult[] {
           `${failures.length} payout mismatches (${offGridMults} off-grid multipliers)`, failures.slice(0, 20),
           { checked: bets.length, total: failures.length, offGridMultipliers: offGridMults });
     results.push(r);
-    console.log(`  [${r.pass ? 'PASS' : 'FAIL'}] Step 7 — ${r.name}`);
+    console.log(`  [${tag(r)}] Step 7 — ${r.name}`);
   }
 
   // ── Step 8: Multiplier Table Provenance (EC-28, EC-32) ────────────────────────
@@ -63,6 +63,24 @@ export function run(ctx: VerifyContext): StepResult[] {
     let ptMatches = 0, seMatches = 0, ptOnly = 0, seOnly = 0, neither = 0;
     const failures: string[] = [];
     const sampleMismatches: string[] = [];
+
+    // SLOT RANGE IS ASSERTED BEFORE THE LOOKUP, because an out-of-range slot reads past
+    // the end of the multiplier array, `parseFloat(undefined)` is NaN, and every `Math.abs(
+    // observed - NaN) > TOLERANCE` comparison below is FALSE — so a bet claiming slot 99 on a
+    // 16-row board matched "neither table" without ever being counted as a mismatch. A board
+    // of `rows` rows has exactly `rows + 1` landing slots; anything else is not a Plinko
+    // outcome and hard-fails here rather than passing through as a silent NaN.
+    let outOfRange = 0;
+    for (const bet of bets) {
+      const { rows } = bet.request;
+      const { final_slot } = bet.response;
+      if (!Number.isInteger(final_slot) || final_slot < 0 || final_slot > rows) {
+        outOfRange++;
+        if (failures.length < 5) {
+          failures.push(`bet ${bet.response.id}: final_slot ${final_slot} is outside [0, ${rows}] — not a landing slot on a ${rows}-row board`);
+        }
+      }
+    }
 
     for (const bet of bets) {
       const { rows, risk } = bet.request;
@@ -100,6 +118,7 @@ export function run(ctx: VerifyContext): StepResult[] {
       seOnlyMatches: seOnly,
       neitherMatches: neither,
       referenceTable: refTable,
+      slotsOutOfRange: outOfRange,
       configLoadTimestamp: 'plinkoConfig.json loaded separately — predates capture',
     };
 
@@ -129,11 +148,14 @@ export function run(ctx: VerifyContext): StepResult[] {
 
     const r = failures.length === 0
       ? pass(8, 'Multiplier Table Provenance', ['EC-28', 'EC-32'],
-          `Given the committed plinkoConfig.json multiplier table, independently-derived binomial probabilities P(slot)=C(rows,k)/2^rows produce ${(avgRTP * 100).toFixed(4)}% RTP (analytic identity over the full table). Live play verifies the observed payout entries (${observedEntries.size}/${totalEntries}); unobserved rare-slot entries are evaluated from the committed table. ${refMatches}/${N} bets match ${refTable}.`, details)
+          `Every one of ${N} final_slot values lies in [0, rows] for its own board. Given the committed plinkoConfig.json multiplier table, independently-derived binomial probabilities P(slot)=C(rows,k)/2^rows produce ${(avgRTP * 100).toFixed(4)}% RTP (analytic identity over the full table). Live play verifies the observed payout entries (${observedEntries.size}/${totalEntries}); unobserved rare-slot entries are evaluated from the committed table. ${refMatches}/${N} bets match ${refTable}.`, details)
       : fail(8, 'Multiplier Table Provenance', ['EC-28', 'EC-32'], 'HARD_FAIL',
-          `${neither} bets match no known multiplier table`, failures, details);
+          outOfRange > 0
+            ? `${outOfRange} bets report a slot outside [0, rows]${neither ? `; ${neither} bets match no known multiplier table` : ''}`
+            : `${neither} bets match no known multiplier table`,
+          failures, details);
     results.push(r);
-    console.log(`  [${r.pass ? 'PASS' : 'FAIL'}] Step 8 — ${r.name}`);
+    console.log(`  [${tag(r)}] Step 8 — ${r.name}`);
   }
 
   // ── Step 9: Phase C Code-Path Equivalence (EC-15, EC-16, EC-17) ──────────────
@@ -165,19 +187,43 @@ export function run(ctx: VerifyContext): StepResult[] {
       }
     }
 
+    // THE BOARD IS WHAT MAKES THE COMPARISON MEAN ANYTHING, and it is read from the data.
+    // Phase C exists to show that STAKE ALONE changes nothing. Recomputing 200 high-stake
+    // slots does not show that: if Phase C ran a different (rows, risk) board from Phase B,
+    // stake and board moved together and neither is isolated. This was described in prose
+    // and asserted nowhere, so a capture that drifted onto another board would still have
+    // scored a clean pass. Both boards are derived from the bets, never named here.
+    const boardOf = (rows: typeof phaseC) =>
+      [...new Set(rows.map(b => `${b.request.rows}r/${b.request.risk}`))].sort().join(', ');
+    const cBoard = boardOf(phaseC);
+    const bBoard = boardOf(phaseB ?? []);
+    const sameBoard = !!bBoard && cBoard === bBoard;
+    if (!sameBoard) {
+      failures.push(
+        `EC-17: Phase C runs ${cBoard || 'no board'} but Phase B runs ${bBoard || 'no board'} — ` +
+        `stake and board both changed, so bet-size invariance is isolated by neither`
+      );
+    }
+    if (slotSkipped > 0 || slotChecked !== phaseC.length) {
+      failures.push(`EC-15: ${slotChecked}/${phaseC.length} Phase C slots recomputed, ${slotSkipped} skipped for want of a revealed seed`);
+    }
+
     const details = {
       phaseCSlotRecomputed: slotChecked,
       phaseCSlotSkipped: slotSkipped,
-      evidence: 'Phase C equivalence is proven deterministically: slots recomputed correctly at $10 using the same HMAC-SHA256 path, and all multipliers match the same scaling_edge[0] table as Phase B. No distributional test is used — sample size (n=200) is too small for meaningful statistical comparison.',
+      phaseBBoard: bBoard,
+      phaseCBoard: cBoard,
+      sameBoard,
+      evidence: 'Phase C equivalence is proven deterministically: slots recomputed correctly at $10 using the same HMAC-SHA256 path on the same board as Phase B, and all multipliers match the same scaling_edge[0] table. No distributional test is used — sample size (n=200) is too small for meaningful statistical comparison.',
     };
 
     const r = failures.length === 0
       ? pass(9, 'Phase C Code-Path Equivalence', ['EC-15', 'EC-16', 'EC-17'],
-          `Phase C: ${slotChecked}/${phaseC.length} slots recomputed correctly at $10, all multipliers match Phase B table. Equivalence proven deterministically.`, details)
+          `Phase C: ${slotChecked}/${phaseC.length} slots recomputed correctly at $10 on ${cBoard}, which is the Phase B board (${bBoard}) — bet size is the only variable that moved; all multipliers match the same table. Equivalence proven deterministically.`, details)
       : fail(9, 'Phase C Code-Path Equivalence', ['EC-15', 'EC-16', 'EC-17'], 'HARD_FAIL',
           `${failures.length} equivalence failures`, failures.slice(0, 20), details);
     results.push(r);
-    console.log(`  [${r.pass ? 'PASS' : 'FAIL'}] Step 9 — ${r.name}`);
+    console.log(`  [${tag(r)}] Step 9 — ${r.name}`);
   }
 
   return results;

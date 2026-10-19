@@ -104,6 +104,14 @@ export interface StepResult {
   summary: string;
   failures: string[];
   details?: Record<string, unknown>;
+  /**
+   * For a FLAG only. `capture` = an auditor-side capture artefact (a retry / connection drop);
+   * it is disclosed as a limitation and is verdict-neutral — a Full Pass survives it. `operator`
+   * (the default when a FLAG carries no origin) = a residual about the game itself → Conditional
+   * Pass. Rule adopted 2026-09-22 (Fable QA on PLINKO-04): a reconstructed nonce is a
+   * capture-origin FLAG, not a PASS, but does not count against the verdict.
+   */
+  origin?: 'capture' | 'operator';
 }
 
 export interface InfoItem {

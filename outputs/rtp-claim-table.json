@@ -1,0 +1,66 @@
+{
+  "package": "duel/plinko",
+  "game": "plinko",
+  "settingSpace": "rows 8–16 × risk low / medium / high (27 configurations) at scaling_edge bracket 0",
+  "rtpMethod": "exact rational: Σ_k C(rows,k)/2^rows × the bracket-0 multiplier string (1e-8 lattice)",
+  "rule": "RTP-CLAIM",
+  "ruleVersion": "1.2.0 (Methodology v1.1: places, per-setting, stake tiers, noted, published, RTP Figure Overstated; agreed 2026-10-14; 1.1.0 2026-10-01; 1.0.0 2026-09-29)",
+  "bandPp": "0.10",
+  "claim": {
+    "kind": "flat",
+    "rtp": "0.999",
+    "source": "game settings: house_edge \"0.001\" on scaling_edge bracket 0 of Duel's plinko config (plinkoConfig.json; E11 as fetched 2026-10-05; declaration paytable.claimedHouseEdge 0.001)"
+  },
+  "settings": 27,
+  "trueMin": {
+    "setting": "rows=10 risk=low",
+    "rtpExact": "51148799871/51200000000",
+    "rtpPct": "99.900000"
+  },
+  "trueMax": {
+    "setting": "rows=9 risk=medium",
+    "rtpExact": "1278720003/1280000000",
+    "rtpPct": "99.900000"
+  },
+  "houseSideFailures": 0,
+  "playerFavourable": 0,
+  "worst": {
+    "setting": "rows=10 risk=low",
+    "gapPp": "0.000000"
+  },
+  "rangeChecks": [],
+  "outcome": "PASS",
+  "minimalFix": "none — the claim holds for every setting it states a figure for",
+  "unstated": 0,
+  "rowsComplete": true,
+  "buckets": [],
+  "rows": [
+    {"setting":"rows=8 risk=low","rtpExact":"12787200023/12800000000","rtpPct":"99.900000","gapPp":"0.000000","side":"within-band","outcome":"PASS"},
+    {"setting":"rows=8 risk=medium","rtpExact":"639360001/640000000","rtpPct":"99.900000","gapPp":"0.000000","side":"within-band","outcome":"PASS"},
+    {"setting":"rows=8 risk=high","rtpExact":"12787200007/12800000000","rtpPct":"99.900000","gapPp":"0.000000","side":"within-band","outcome":"PASS"},
+    {"setting":"rows=9 risk=low","rtpExact":"3196800007/3200000000","rtpPct":"99.900000","gapPp":"0.000000","side":"within-band","outcome":"PASS"},
+    {"setting":"rows=9 risk=medium","rtpExact":"1278720003/1280000000","rtpPct":"99.900000","gapPp":"0.000000","side":"within-band","outcome":"PASS"},
+    {"setting":"rows=9 risk=high","rtpExact":"25574400013/25600000000","rtpPct":"99.900000","gapPp":"0.000000","side":"within-band","outcome":"PASS"},
+    {"setting":"rows=10 risk=low","rtpExact":"51148799871/51200000000","rtpPct":"99.900000","gapPp":"0.000000","side":"within-band","outcome":"PASS"},
+    {"setting":"rows=10 risk=medium","rtpExact":"51148800111/51200000000","rtpPct":"99.900000","gapPp":"0.000000","side":"within-band","outcome":"PASS"},
+    {"setting":"rows=10 risk=high","rtpExact":"25574400007/25600000000","rtpPct":"99.900000","gapPp":"0.000000","side":"within-band","outcome":"PASS"},
+    {"setting":"rows=11 risk=low","rtpExact":"51148799971/51200000000","rtpPct":"99.900000","gapPp":"0.000000","side":"within-band","outcome":"PASS"},
+    {"setting":"rows=11 risk=medium","rtpExact":"102297600169/102400000000","rtpPct":"99.900000","gapPp":"0.000000","side":"within-band","outcome":"PASS"},
+    {"setting":"rows=11 risk=high","rtpExact":"25574400013/25600000000","rtpPct":"99.900000","gapPp":"0.000000","side":"within-band","outcome":"PASS"},
+    {"setting":"rows=12 risk=low","rtpExact":"5114880003/5120000000","rtpPct":"99.900000","gapPp":"0.000000","side":"within-band","outcome":"PASS"},
+    {"setting":"rows=12 risk=medium","rtpExact":"102297600077/102400000000","rtpPct":"99.900000","gapPp":"0.000000","side":"within-band","outcome":"PASS"},
+    {"setting":"rows=12 risk=high","rtpExact":"102297600121/102400000000","rtpPct":"99.900000","gapPp":"0.000000","side":"within-band","outcome":"PASS"},
+    {"setting":"rows=13 risk=low","rtpExact":"102297599999/102400000000","rtpPct":"99.900000","gapPp":"0.000000","side":"within-band","outcome":"PASS"},
+    {"setting":"rows=13 risk=medium","rtpExact":"102297600017/102400000000","rtpPct":"99.900000","gapPp":"0.000000","side":"within-band","outcome":"PASS"},
+    {"setting":"rows=13 risk=high","rtpExact":"409190400469/409600000000","rtpPct":"99.900000","gapPp":"0.000000","side":"within-band","outcome":"PASS"},
+    {"setting":"rows=14 risk=low","rtpExact":"204595199899/204800000000","rtpPct":"99.900000","gapPp":"0.000000","side":"within-band","outcome":"PASS"},
+    {"setting":"rows=14 risk=medium","rtpExact":"409190400699/409600000000","rtpPct":"99.900000","gapPp":"0.000000","side":"within-band","outcome":"PASS"},
+    {"setting":"rows=14 risk=high","rtpExact":"818380800361/819200000000","rtpPct":"99.900000","gapPp":"0.000000","side":"within-band","outcome":"PASS"},
+    {"setting":"rows=15 risk=low","rtpExact":"51148800027/51200000000","rtpPct":"99.900000","gapPp":"0.000000","side":"within-band","outcome":"PASS"},
+    {"setting":"rows=15 risk=medium","rtpExact":"327352320237/327680000000","rtpPct":"99.900000","gapPp":"0.000000","side":"within-band","outcome":"PASS"},
+    {"setting":"rows=15 risk=high","rtpExact":"818380800273/819200000000","rtpPct":"99.900000","gapPp":"0.000000","side":"within-band","outcome":"PASS"},
+    {"setting":"rows=16 risk=low","rtpExact":"3273523196549/3276800000000","rtpPct":"99.900000","gapPp":"0.000000","side":"within-band","outcome":"PASS"},
+    {"setting":"rows=16 risk=medium","rtpExact":"3273523194643/3276800000000","rtpPct":"99.900000","gapPp":"0.000000","side":"within-band","outcome":"PASS"},
+    {"setting":"rows=16 risk=high","rtpExact":"818380799599/819200000000","rtpPct":"99.900000","gapPp":"0.000000","side":"within-band","outcome":"PASS"}
+  ]
+}

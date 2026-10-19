@@ -27,6 +27,11 @@ export class PlinkoConfig {
     return this.cfg.scaling_edge[String(rows)][risk][0];
   }
 
+  /** Every scaling_edge bracket for (rows, risk), in the order the config declares them. */
+  scalingEdgeBrackets(rows: number, risk: RiskLevel): ScalingEdgeBracket[] {
+    return this.cfg.scaling_edge[String(rows)][risk];
+  }
+
   /** All (rows, risk) config pairs. */
   allConfigs(): Array<{ rows: number; risk: RiskLevel }> {
     const risks: RiskLevel[] = ['low', 'medium', 'high'];
