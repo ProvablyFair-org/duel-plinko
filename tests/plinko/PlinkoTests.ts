@@ -354,9 +354,10 @@ describe('Payout Accuracy — confirms the platform paid the correct amount for 
 
 // ── The operator's own Verify-tab code (profile PLINKO-09) ────────────────────
 
-describe('Operator source — Duel\'s own Plinko Verify-tab code, executed unmodified (evidence/verify-tab, copied 2026-09-25)', () => {
+describe('Second check — Duel\'s own Plinko Verify-tab code, executed unmodified (evidence/verify-tab, copied 2026-09-25)', () => {
+  // Not the source of src/rng.ts: that is rebuilt from docs/ALGORITHM.md. Duel's code is run as a cross-check.
   // duel.com → Provably Fair → Verify (Plinko) → Expand → Copy, saved verbatim (src/operator-verifier.ts)
-  const { runOperatorVerifier, checkOperatorCites, pathFromPrefixes, OPERATOR_VERIFIER_PINS, OPERATOR_VERIFIER_FILE, OPERATOR_EXPECTED_LOGS } =
+  const { runOperatorVerifier, pathFromPrefixes, OPERATOR_VERIFIER_PINS, OPERATOR_VERIFIER_FILE, OPERATOR_EXPECTED_LOGS } =
     require('../../src/operator-verifier') as typeof import('../../src/operator-verifier');
   const { computePathFromBuffer: pathOf } = require('../../src/rng') as typeof import('../../src/rng');
   const known = VECTORS.map((v, i) => ({ id: `known${i}`, serverSeed: v.serverSeed, clientSeed: v.clientSeed, nonce: v.nonce, rows: v.rows }));
@@ -371,12 +372,6 @@ describe('Operator source — Duel\'s own Plinko Verify-tab code, executed unmod
     assert.strictEqual(run.files[0].actual, OPERATOR_VERIFIER_PINS[OPERATOR_VERIFIER_FILE]);
     assert.strictEqual(run.error, null);
     assert.deepStrictEqual(run.logs, [...OPERATOR_EXPECTED_LOGS]);
-  });
-
-  it('every operator line src/rng.ts cites carries the quoted text verbatim', () => {
-    const c = checkOperatorCites();
-    assert.deepStrictEqual(c.bad, []);
-    assert.ok(c.checked > 0);
   });
 
   it('fixed vectors: the operator code returns the 7 known-answer slots above', () => {

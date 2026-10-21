@@ -6,12 +6,13 @@
   },
   "unitEntries": [
     "tests/plinko/PlinkoTests.ts",
+    "tests/plinko/RngSpecTests.ts",
     "tests/plinko/domainTests.ts",
     "tests/plinko/replayPrecisionTests.ts"
   ],
   "inputs": {
     ".mocharc.yml": "740a5513cfdeb6b12e9da4a02c1dca865f5204541da4458b9aa9552ab81fe2fe",
-    "package-lock.json": "3f5f5e548c0dd5bd370a35acfa746efd084f80ee05f9f0542c5ac28bf5faf880",
+    "package-lock.json": "0451d3f18d405589997a0e30062bc6a2ca271f30d335a65f33dc1d9d973c8397",
     "scripts/build-standalone.mjs": "c9aa7f849375fe5dbe9859ebb2e49f6160c9ff3f5bd1bd2a2fcbeeee95f9ca9a",
     "scripts/check-standalone.mjs": "4aa613101ac454446734f0e711888e1171ec5ceb3412615e329f20252afc6502",
     "scripts/standalone-runtime.cjs": "b6b2ada30e109e2949b3e3c6e5da4852bcc0549e1f46fad4cf657d255440f85c",
@@ -20,24 +21,25 @@
     "src/diff-simulation.ts": "7f1d45de64582cbd6bad35f4dcfed3e0fced9a17c70e8d798fbfed2c27be21b9",
     "src/diff.ts": "0375320f947d871851b082f4fca4daf4bb6df0b7030434e3d0b551be9de00e35",
     "src/domains.ts": "c7d8448d3afbbbfd9084154810cb9393f539fe332ee9d13bcdab586f6d445b6d",
-    "src/live-site-verifier.ts": "9d93ac1886029caee2edd0b8a4df39f003a3e287134e913bdb2cfbdb73e74c8c",
+    "src/live-site-verifier.ts": "f613c4ede83340d6c2ad84778420d21d85dfb964426e61edfcd9b56b8f07a45e",
     "src/loader.ts": "ae5ed36c259d7e60ae0fbe7cd12e2593bdc3401c7eedba22d99ce22bf36d122a",
-    "src/operator-verifier.ts": "b92dedfdc2f9d86ca06ffc65de94428ea72c08c157535cd6598ec5069938cafb",
+    "src/operator-verifier.ts": "bea14aafaf93570d01aade5c3b179c570bef747749ef2fece0b9c1aaa8f93f41",
     "src/parallel.ts": "f6100225a629229134d314353b145c00e0acd87b841f13692228cbd4bddd4c4e",
     "src/pass1.ts": "a90a10da0aee509ba558d1064a0a8d45f808fd05892356e2ead92453269c6a8d",
     "src/pass2-replay.ts": "55816086109240ff285e2ca000f4e5e06c8d5e2cf834cd47859ce661e6a9b017",
-    "src/profile-map.ts": "1238aa4c61ce09615cfa74a6cac4457185c5ebd3198c81d19ad20272559754ed",
+    "src/profile-map.ts": "e134e6e1eefaf4d880580fbd65361e412f47e43cf9199bcd7326ec7cc1dc4ea5",
     "src/replay-precision.ts": "4e5023a31aa634a5c88006296c92ce43602181bd90b49ddcf3f13f73c98cee08",
-    "src/rng.ts": "0d3fcc4eed45ecc9fca8fdcb0b46f3d4173c0736ee1511c115027092d375417f",
+    "src/rng.ts": "5954aae4a9732e7848c8764f2883818ffa65a5c6748594828cd667ef3d3a83de",
     "src/rtp-claim-switch.ts": "89e91174a245cc3181ef309a5b8b5619660beb6898faa7e75fc44a47007d13c4",
     "src/rtp-claim.ts": "c9a9c1c437ff2783c620c337d15817fe9df5902af6e290998d97bce6705f131c",
     "src/rtp-settings.ts": "96faa13c80e9d17e41e968d36164b5594233690f7a739f104cd31f1ef4f558b3",
     "src/sim-seeds.ts": "448802d2edc243437640104bab7d0c923245bcf41cf8ab4e9101da018d010653",
-    "src/simulate.ts": "50af945a4431826e869a4ae7702f2a23200cfd93fda57df6c0c8e68e0833ec2e",
+    "src/simulate.ts": "8ade826676b3c06ff0ae0bc8e6750ec58a059a47dedc60cf195e37470535c5db",
     "src/site-verifier.ts": "e13537019a27a7deea6db4ed826d984606717c5007bf043017ed6252eb455233",
     "src/stats.ts": "60d6883c89eca6f789cbe8036dce8cb7076b32949da5d1d9c3c3bd123cf7bbde",
     "src/types.ts": "cb5d2ef052f6fee7c44fd7b3a7de425c5634d00a0e398a6baab9944fbde98392",
-    "tests/plinko/PlinkoTests.ts": "65cb0cda7125e723061b057f09c49aa1c2135844cc7412210a363da655a28967",
+    "tests/plinko/PlinkoTests.ts": "2db1240b6a9e8bfb0b7c4dc3a62b48089782f007c5af16186dbeb9fa30c85459",
+    "tests/plinko/RngSpecTests.ts": "6bb1c6b84699d9a5329b89aa927410d03900e497add3cfc9f81197d60b70354b",
     "tests/plinko/domainTests.ts": "269d1ea8f1b327de17ba35a2770ba9e3acf1976611edc21e4d325a793e1cc922",
     "tests/plinko/replayPrecisionTests.ts": "4a604dd50243c71230c9aefaed746e8d0a88e6a48dd90b02e05a0f8b06f91503",
     "tests/steps/anti-circularity.ts": "a4fdc54da146bd38e79d0db459d1db39314d03666ae613696c709b09de1a7f80",
@@ -45,7 +47,7 @@
     "tests/steps/commitment.ts": "1754a3937957ae26b284a94556a266db46e706be07478632ca9f6504a5cd45a3",
     "tests/steps/context.ts": "5a2f4e26af4154b411267f5bed7c2ef20a9e55cf44042adeb11c8717411506db",
     "tests/steps/dataset.ts": "8de09b46f423660530b878a0d3fcf0f49ff64a6229ff1f2bf483762d207afbe8",
-    "tests/steps/determinism.ts": "c8a243679f764ef61b89e0157b0f1d7264e57d529b07d12ea2cae5be239aa60c",
+    "tests/steps/determinism.ts": "626363e2b50901e6b7203aa8bd97a392b70b08a6ad1548b859c871bfd3d10280",
     "tests/steps/live-fit.ts": "5222331ec8ab8069c6906ea05a4b1bd3f3a426e550964319ea9f1f602cbd164f",
     "tests/steps/payouts.ts": "3b04a87fcc52e79c3c9c1292be5494bca4474204c6cc19e73af1f4694d7df322",
     "tests/steps/phase-d.ts": "87a6f7c0a1965a52e5f3389701144cd7a9772d464ef772c8282898e038be5ac4",
@@ -56,7 +58,7 @@
     "tsconfig.json": "02a46928a8b34e7a907354c218cad6c5bad2d8b4949b2bd4274bb16b59b37699"
   },
   "outputs": {
-    "test.js": "890d070fd4b694ec74d4e013622134f28aed408d26f4271bae4aafe1c0046446",
-    "verify.js": "057416cbda0f12351104ab7a42aba4b8fd92edcc8d3c2d7a24f0726baa2b2dcf"
+    "test.js": "9430ab913cac2fdd8835d799e881a2cc9c933b40488d019a80fa2ceeeb3e91ef",
+    "verify.js": "1fd9dc4e1475431d7ef8e859367cb8fc766b437721adcc119898bc8df4bb6999"
   }
 }

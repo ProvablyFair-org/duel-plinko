@@ -1,69 +1,54 @@
-import crypto from 'crypto';
-
-/*
- * PORTED FROM THE OPERATOR'S OWN SOURCE: the Plinko code panel of duel.com → Provably Fair → Verify
- * (Expand → Copy), copied verbatim by Paulo on 2026-09-25 to
- * evidence/verify-tab/duel-verify-tab-plinko-2026-09-25.js (SHA-256 8b3366d1…65c9ce, pinned in
- * src/operator-verifier.ts; evidence/S10 shows the same panel). "Lxx" below is a line of that file.
- * Every citation is listed in OPERATOR_SOURCE_CITES and checked against the pinned bytes by Step 5
- * and the unit tests — a cited line that does not carry the quoted text FAILs. Step 5 also EXECUTES
- * that file on every captured bet and requires its bucket and its L/R path to equal this module's
- * and the served final_slot.
- *
- * NOT in the operator file: the commitment encoding (verifyHash below — SHA-256 of the hex-decoded
- * seed). It is established from the capture (Step 1), not from operator source.
- */
-
-// ── Operator source citations (checked, not decorative) ────────────────────
 /**
- * Each entry: a line of evidence/verify-tab/duel-verify-tab-plinko-2026-09-25.js and text that line
- * must contain verbatim. src/operator-verifier.ts checkOperatorCites reads the pinned file and FAILs
- * any entry whose line does not carry its text.
+ * PROVENANCE (header added on integration, 20 Oct 2026; everything below this comment is the
+ * clean-room module byte for byte).
+ *
+ * This module was REBUILT FROM A WRITTEN SPECIFICATION, not ported from Duel's code:
+ *   spec      docs/ALGORITHM.md, a copy of games/plinko/ALGORITHM.md in the ProvablyFair.org audit
+ *             framework (SHA-256 cbc8fd1a…4fe7fa). Written from Duel's public pages, the standard
+ *             provably-fair construction, Duel's public plinko config and the 8,100 live bets,
+ *             without opening Duel's code (its §8 lists every file read).
+ *   rebuild   written by an implementer who read ONLY that spec and a module-interface file (export
+ *             names and types), and never opened Duel's code, its Verify-tab file, or this package's
+ *             earlier src/rng.ts.
+ *   self-test tests/plinko/RngSpecTests.ts (the spec's §5 vectors and properties).
+ *
+ * Duel's published Verify-tab code (evidence/verify-tab/duel-verify-tab-plinko-2026-09-25.js) is
+ * NOT the source of this module. It is run byte for byte as a SECOND CHECK, by Step 5 and the unit
+ * tests (src/operator-verifier.ts), next to the ProvablyFair.org docs-site and live-site verifiers.
+ *
+ * Three-way agreement measured on integration (20 Oct 2026, the 8,100-bet capture, seeds paired to
+ * bets by hashing): this module vs the live bets, commitment 8,100/8,100 and final_slot
+ * 8,100/8,100; vs Duel's Verify-tab code, bucket 8,100/8,100 and ordered L/R path 8,100/8,100; vs
+ * the provablyfair.org live verifier, slot 8,100/8,100 and L/R path 8,100/8,100.
+ * Step 5 of `npm run verify` re-measures all three on every run.
  */
-export const OPERATOR_SOURCE_CITES: ReadonlyArray<{ line: number; text: string; ports: string }> = Object.freeze([
-  { line: 29, text: 'const keyBytes = hexToBytes(keyHex);', ports: 'the server seed is hex-decoded to the HMAC key' },
-  { line: 35, text: "{ name: 'HMAC', hash: 'SHA-256' },", ports: 'HMAC-SHA256' },
-  { line: 48, text: 'let position = 0;', ports: 'slot starts at 0' },
-  { line: 50, text: 'for (let cursor = 0; cursor < rows; cursor++) {', ports: 'one HMAC per row, cursor = 0 … rows − 1' },
-  { line: 52, text: 'new TextEncoder().encode(`${clientSeed}:${nonce}:${cursor}`)', ports: 'the HMAC message' },
-  { line: 56, text: 'const value = parseInt(bounceHash.slice(0, 8), 16);', ports: 'BIT_EXTRACTION.hexChars = 8: first 4 bytes, big-endian' },
-  { line: 60, text: 'position += (value % 2);', ports: 'BIT_EXTRACTION.modulus = 2: odd = right (+1), even = left' },
-  { line: 63, text: 'return position;', ports: 'final_slot = the sum' },
-]);
+// Clean-room implementation of the Duel.com Plinko outcome derivation.
+// Built only from ALGORITHM.md (behaviour) and INTERFACE.md (names and types).
+// Node `crypto` only, no other dependencies.
 
-/**
- * THE DIRECTION EXTRACTION, DECLARED AS PARAMETERS.
- *
- * Every row of the board turns one HMAC-SHA256 digest into one left/right decision. How that
- * decision is drawn out of the digest decides whether the board is fair before any statistic is
- * computed: an extraction whose domain does not divide evenly by the number of outcomes favours
- * the low residues, and no amount of live data makes that go away.
- *
- * The parameters live here, `directionBit` is the only place that reads them, and
- * `bitExtractionBiasBound()` computes the bound from the same two numbers — so the bound a step
- * prints describes the code that produced the slots, not a claim typed beside it.
- */
-export const BIT_EXTRACTION = Object.freeze({
-  /** Hex characters consumed from the front of the digest: 8 → a uint32 domain. */
-  hexChars: 8,   // operator L56
-  /** Outcomes per row: left or right. */
-  modulus: 2,    // operator L60
-  /** No draw is ever discarded and redrawn; the bound below is what makes that admissible. */
+import { createHash, createHmac } from "crypto";
+
+// ALGORITHM.md §2 Step 2: each row uses the first 4 digest bytes (8 hex
+// characters) as a big-endian unsigned 32-bit integer and takes it mod 2.
+// No draw is ever discarded (2^32 is a multiple of 2).
+export const BIT_EXTRACTION: Readonly<{
+  hexChars: number;
+  modulus: number;
+  rejectionSampling: boolean;
+}> = Object.freeze({
+  hexChars: 8,
+  modulus: 2,
   rejectionSampling: false,
 });
 
-/**
- * The exact worst-case modulo bias of the declared extraction.
- *
- * `domainSize` values map onto `modulus` residues. Residue r is produced by
- * `floor((domainSize - 1 - r) / modulus) + 1` of them, so the counts differ by at most one and
- * the bias is the largest gap between any residue's share and 1/modulus. When the domain divides
- * exactly the gap is zero and the extraction is EXACT — which is the case here: 16^8 = 2^32 is
- * even, so 2^31 digests send the ball left and 2^31 send it right.
- *
- * Returned as numbers, never as a sentence: the profile's floor is 2^-32 and a reader has to be
- * able to compare the two.
- */
+// §1.1: rows is an integer in 8…16.
+const MIN_ROWS = 8;
+const MAX_ROWS = 16;
+
+const HEX_RE = /^[0-9a-fA-F]*$/;
+
+// Analytic bias of the per-row bit, derived from BIT_EXTRACTION alone
+// (§2 Step 2 states the expected result: bias 0).
 export function bitExtractionBiasBound(): {
   hexChars: number;
   modulus: number;
@@ -77,112 +62,127 @@ export function bitExtractionBiasBound(): {
   rejectedDraws: number;
 } {
   const { hexChars, modulus, rejectionSampling } = BIT_EXTRACTION;
-  const domainSize = Math.pow(2, 4 * hexChars);
+  // Number of distinct values the consumed hex prefix can take.
+  const domainSize = 16 ** hexChars;
   const remainder = domainSize % modulus;
+  // Each residue gets floor(domain/modulus) values; `remainder` residues get one extra.
   const minResidueCount = Math.floor(domainSize / modulus);
-  const maxResidueCount = remainder === 0 ? minResidueCount : minResidueCount + 1;
-  const bias = Math.max(
-    maxResidueCount / domainSize - 1 / modulus,
-    1 / modulus - minResidueCount / domainSize
-  );
+  const maxResidueCount = minResidueCount + (remainder === 0 ? 0 : 1);
+  // With rejection sampling, the top `remainder` values would be discarded and
+  // every residue would be exactly uniform. Without it, the worst residue is
+  // off from 1/modulus by (maxCount/domain - 1/modulus).
+  const rejectedDraws = rejectionSampling ? remainder : 0;
+  let bias: number;
+  if (rejectionSampling || remainder === 0) {
+    bias = 0;
+  } else {
+    const hi = Math.abs(maxResidueCount / domainSize - 1 / modulus);
+    const lo = Math.abs(minResidueCount / domainSize - 1 / modulus);
+    bias = Math.max(hi, lo);
+  }
   return {
-    hexChars, modulus, domainSize, remainder,
-    minResidueCount, maxResidueCount,
+    hexChars,
+    modulus,
+    domainSize,
+    remainder,
+    minResidueCount,
+    maxResidueCount,
     bias,
-    exact: remainder === 0,
+    exact: bias === 0,
     rejectionSampling,
-    // No draw is rejected, so the census the profile asks for when rejection sampling IS used
-    // is zero by construction rather than unmeasured.
-    rejectedDraws: 0,
+    rejectedDraws,
   };
 }
 
-/** One row's direction from one digest, under the declared extraction. 0 = left, 1 = right. */
+// §2 Step 2: bit = (first 4 digest bytes as big-endian u32) mod 2.
 export function directionBit(hmacHex: string): number {
-  return parseInt(hmacHex.substring(0, BIT_EXTRACTION.hexChars), 16) % BIT_EXTRACTION.modulus;
-}
-
-/**
- * Compute final_slot from a pre-computed key Buffer.
- * Use this when calling computeSlot in a tight loop over the same serverSeed
- * (e.g. Pass 2 simulation) to avoid repeated Buffer.from() allocations.
- */
-export function computeSlotFromBuffer(
-  key: Buffer,
-  clientSeed: string,
-  nonce: number,
-  rows: number
-): number {
-  let slot = 0;                                        // operator L48
-  for (let cursor = 0; cursor < rows; cursor++) {      // operator L50
-    const message = `${clientSeed}:${nonce}:${cursor}`;                           // operator L52
-    const hmac = crypto.createHmac('sha256', key).update(message).digest('hex');  // operator L28–L43
-    slot += directionBit(hmac);                        // operator L56, L60
+  const { hexChars, modulus } = BIT_EXTRACTION;
+  if (hmacHex.length < hexChars || !HEX_RE.test(hmacHex)) {
+    throw new TypeError(`directionBit: expected a hex digest of at least ${hexChars} hex characters`);
   }
-  return slot;                                         // operator L63
+  // parseInt on 8 hex chars reads them most-significant first, i.e. big-endian.
+  const u = parseInt(hmacHex.slice(0, hexChars), 16);
+  return u % modulus;
 }
 
-/**
- * The ordered directions of one drop, packed into a bitmask (row 0 is the high bit).
- *
- * The slot is a SUM, so two different paths routinely land in the same slot — C(2·rows, rows)/4^rows
- * of the time for a fresh draw, about 16 % on a twelve-row board. A test that asks whether a wrong
- * client seed changed the SLOT is therefore testing against a coincidence rate of one in six, while
- * the path it is really asking about coincides only 2^-rows of the time. Both are measured; this is
- * what makes the stronger one possible.
- */
+function checkArgs(clientSeed: string, nonce: number, rows: number): void {
+  if (typeof clientSeed !== "string") {
+    throw new TypeError("clientSeed must be a string");
+  }
+  // §1.1: nonce is a non-negative integer; §2 Step 1 prints it in plain base 10.
+  if (!Number.isSafeInteger(nonce) || nonce < 0) {
+    throw new RangeError("nonce must be a non-negative safe integer");
+  }
+  // §1.1: rows 8…16.
+  if (!Number.isInteger(rows) || rows < MIN_ROWS || rows > MAX_ROWS) {
+    throw new RangeError(`rows must be an integer in ${MIN_ROWS}..${MAX_ROWS}`);
+  }
+}
+
+// §2 Step 1: digest_i = HMAC-SHA256(key, UTF-8(clientSeed + ":" + nonce + ":" + i)).
+function rowDigestHex(key: Buffer, clientSeed: string, nonce: number, i: number): string {
+  // String(n) of a non-negative safe integer is plain base 10 with no padding,
+  // sign, separators or exponent (§2 Step 1, decimal(x)).
+  const message = `${clientSeed}:${String(nonce)}:${String(i)}`;
+  return createHmac("sha256", key).update(Buffer.from(message, "utf8")).digest("hex");
+}
+
+// §2 Steps 1–3, also returning the per-row bits packed with row 0 as the
+// highest of `rows` bits (INTERFACE.md convention; §6 O2 leaves on-screen
+// orientation undetermined, the packing is not a left/right claim).
 export function computePathFromBuffer(
   key: Buffer,
   clientSeed: string,
   nonce: number,
-  rows: number
+  rows: number,
 ): { slot: number; path: number } {
+  checkArgs(clientSeed, nonce, rows);
   let slot = 0;
   let path = 0;
-  for (let cursor = 0; cursor < rows; cursor++) {
-    const message = `${clientSeed}:${nonce}:${cursor}`;
-    const hmac = crypto.createHmac('sha256', key).update(message).digest('hex');
-    const bit = directionBit(hmac);
+  // §2 Step 1: cursor i runs 0 … rows−1, one HMAC per row.
+  for (let i = 0; i < rows; i++) {
+    const bit = directionBit(rowDigestHex(key, clientSeed, nonce, i));
+    // §2 Step 3: slot is the count of 1-bits.
     slot += bit;
-    path = path * 2 + bit;
+    // Shift left then add: row 0 ends up in the highest of the `rows` bits.
+    // rows ≤ 16, so this never leaves the safe 31-bit range of `<<`.
+    path = (path << 1) | bit;
   }
   return { slot, path };
 }
 
-/**
- * Compute final_slot via HMAC-SHA256 per-row commit-reveal.
- *
- * key     = Buffer.from(serverSeed, 'hex')          (operator L29)
- * for cursor = 0..rows-1:
- *   message = `${clientSeed}:${nonce}:${cursor}`
- *   hmac    = HMAC-SHA256(key, message).hex()
- *   hex4    = hmac[0..7]  (first 4 bytes)
- *   int     = parseInt(hex4, 16)
- *   if int % 2 === 1: slot++   // odd = right (+1), even = left (no change)
- */
-export function computeSlot(
-  serverSeed: string,
-  clientSeed: string,
-  nonce: number,
-  rows: number
-): number {
-  return computeSlotFromBuffer(Buffer.from(serverSeed, 'hex'), clientSeed, nonce, rows);
+// §2 Steps 1–3: slot in 0 … rows.
+export function computeSlotFromBuffer(key: Buffer, clientSeed: string, nonce: number, rows: number): number {
+  return computePathFromBuffer(key, clientSeed, nonce, rows).slot;
 }
 
-/**
- * Verify commit-reveal: SHA-256(Buffer.from(serverSeed, 'hex')) === serverSeedHashed
- */
+// §1.1 / §2 Step 1: the server seed is 64 hex characters, and the HMAC key is
+// the 32 bytes they encode (not the ASCII text).
+function decodeServerSeed(serverSeed: string): Buffer {
+  if (typeof serverSeed !== "string" || serverSeed.length !== 64 || !HEX_RE.test(serverSeed)) {
+    throw new TypeError("serverSeed must be 64 hex characters");
+  }
+  return Buffer.from(serverSeed, "hex");
+}
+
+export function computeSlot(serverSeed: string, clientSeed: string, nonce: number, rows: number): number {
+  return computeSlotFromBuffer(decodeServerSeed(serverSeed), clientSeed, nonce, rows);
+}
+
+// §1.2: commitment = lowercase hex of SHA-256 over the hex-decoded seed bytes.
+// A seed that is not 64 hex characters cannot match, so it returns false.
 export function verifyHash(serverSeed: string, serverSeedHashed: string): boolean {
-  const hash = crypto
-    .createHash('sha256')
-    .update(Buffer.from(serverSeed, 'hex'))
-    .digest('hex');
-  return hash === serverSeedHashed;
+  let key: Buffer;
+  try {
+    key = decodeServerSeed(serverSeed);
+  } catch {
+    return false;
+  }
+  if (typeof serverSeedHashed !== "string") return false;
+  return sha256Buffer(key) === serverSeedHashed.toLowerCase();
 }
 
-/**
- * SHA-256 of a raw Buffer (for dataset hash EC-25).
- */
+// Plain SHA-256 of bytes, lowercase hex.
 export function sha256Buffer(buf: Buffer): string {
-  return crypto.createHash('sha256').update(buf).digest('hex');
+  return createHash("sha256").update(buf).digest("hex");
 }

@@ -27,13 +27,14 @@ const DECLARED = {
   auditId: 'PF-2026-DL01',
   game: 'plinko',
   casino: 'duel',
-  release: 'v1.3.0',
+  release: 'v1.4.0',
   framework: '1.1',
   environmentHost: 'duel.com',
   environmentStage: 'production',
   environmentQualifier: null,
-  supersedes: 'v1.2.0',
+  supersedes: 'v1.3.0',
   signature: 'SHA256:gEujiJm2pRyq7lQsfYQfQ1r97H/J7GdaKHbOW8GtikY',
+  pending: '',
 };
 
 /** Duel's Pass 1 is deterministic from pinned seeds — described here as the audit declares it. */
@@ -59,7 +60,7 @@ const ARTIFACTS = [
 /** The falsifiability battery. `mutations` is computed from the registry; the RUN RESULT
  * (killed / declaredSurvivors) is DECLARED from the last completed `npm run mutate`, and must be
  * refreshed by re-running the battery — a generator must never assert a kill it did not run. */
-const FALSIFIABILITY_DECLARED = { killed: 53, scoredStepsCovered: '23/23', declaredSurvivors: 0 };
+const FALSIFIABILITY_DECLARED = { killed: 52, scoredStepsCovered: '23/23', declaredSurvivors: 0 };
 
 /** How long `npm test` takes, and on what. DECLARED from measured runs — a wall time is a property of
  * the machine, so no file in the package can supply it (Mike's review 2026-09-28, F14). */
@@ -140,6 +141,7 @@ const manifest = {
     scoredStepsCovered: FALSIFIABILITY_DECLARED.scoredStepsCovered,
     declaredSurvivors: FALSIFIABILITY_DECLARED.declaredSurvivors,
   },
+  pending: DECLARED.pending,
 };
 
 if (problems.length) { console.error('  [release-manifest] cannot produce a manifest:'); for (const p of problems) console.error(`    - ${p}`); process.exit(1); }

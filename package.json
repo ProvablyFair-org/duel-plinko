@@ -1,6 +1,6 @@
 {
   "name": "plinko-audit",
-  "version": "1.3.0",
+  "version": "1.4.0",
   "description": "Provably fair audit \u2014 Duel.com Plinko",
   "engines": {
     "node": "22.x"

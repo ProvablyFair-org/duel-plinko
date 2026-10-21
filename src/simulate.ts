@@ -2,7 +2,7 @@
  * Monte Carlo simulation for Plinko v3 — two-pass.
  *
  * Pass 1 — fresh random seeds (1M rounds per config):
- *   Exercises src/rng.ts (ported from Duel's published Verify-tab code) and the
+ *   Exercises src/rng.ts (rebuilt from the written spec docs/ALGORITHM.md; Duel's Verify-tab code is a second check, not its source) and the
  *   multiplier table without casino data. The seeds were generated once with
  *   crypto.randomBytes() and are pinned in src/sim-seeds.ts (SIM_SEEDS).
  *

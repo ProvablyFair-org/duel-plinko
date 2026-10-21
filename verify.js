@@ -563,13 +563,11 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.OPERATOR_RUNNER_TIMEOUT_MS = exports.OPERATOR_EXPECTED_LOGS = exports.OPERATOR_VERIFIER_PROVENANCE = exports.OPERATOR_VERIFIER_PINS = exports.OPERATOR_VERIFIER_RUNNER = exports.OPERATOR_VERIFIER_FILE = exports.PACKAGE_ROOT = void 0;
 exports.runOperatorVerifier = runOperatorVerifier;
 exports.pathFromPrefixes = pathFromPrefixes;
-exports.checkOperatorCites = checkOperatorCites;
 const crypto = __importStar(require("crypto"));
 const fs = __importStar(require("fs"));
 const os = __importStar(require("os"));
 const path = __importStar(require("path"));
 const child_process_1 = require("child_process");
-const rng_1 = require("./rng");
 exports.PACKAGE_ROOT = path.join(__dirname, '..');
 exports.OPERATOR_VERIFIER_FILE = 'evidence/verify-tab/duel-verify-tab-plinko-2026-09-25.js';
 exports.OPERATOR_VERIFIER_RUNNER = 'verifier-parity/operator/run-operator-verifier.cjs';
@@ -657,21 +655,6 @@ function pathFromPrefixes(prefixes) {
         prev = s;
     }
     return p;
-}
-function checkOperatorCites(root = exports.PACKAGE_ROOT) {
-    const p = path.join(root, exports.OPERATOR_VERIFIER_FILE);
-    if (!fs.existsSync(p))
-        return { checked: 0, bad: [`${exports.OPERATOR_VERIFIER_FILE} not found`] };
-    const lines = fs.readFileSync(p, 'utf8').split('\n');
-    const bad = [];
-    for (const c of rng_1.OPERATOR_SOURCE_CITES) {
-        const at = lines[c.line - 1];
-        if (at === undefined || !at.includes(c.text))
-            bad.push(`L${c.line} does not contain ${JSON.stringify(c.text)} (it reads ${JSON.stringify((at ?? '').trim())})`);
-    }
-    if (rng_1.OPERATOR_SOURCE_CITES.length === 0)
-        bad.push('src/rng.ts cites no operator line');
-    return { checked: rng_1.OPERATOR_SOURCE_CITES.length, bad };
 }
 
 },
@@ -1150,24 +1133,26 @@ exports.PACKAGE_CHECKS = [
     },
     {
         id: 'PLINKO-09',
-        artifact: 'tests/plinko/PlinkoTests.ts (Operator source block) + src/rng.ts OPERATOR_SOURCE_CITES + src/operator-verifier.ts + Step 5',
+        artifact: 'docs/ALGORITHM.md + tests/plinko/RngSpecTests.ts + tests/plinko/PlinkoTests.ts (Second check block) + src/operator-verifier.ts + Step 5',
         coverage: 'full',
-        note: 'CORRECTED 2026-09-25: the earlier note said the operator\'s algorithm was referenced only as an external '
-            + 'repository and a screenshot. Duel publishes it as source on its Verify tab (S10 already showed the whole '
-            + 'panel); it is now vendored: evidence/verify-tab/duel-verify-tab-plinko-2026-09-25.js, copied verbatim by '
-            + 'Paulo on 2026-09-25 (duel.com → Provably Fair → Verify → Expand → Copy), SHA-256 8b3366d1…, pinned with its '
-            + 'runner in src/operator-verifier.ts. The asserts, each met: (1) "unit tests reproduce at least one captured bet '
-            + 'from its revealed seed … against the operator\'s published algorithm" — the Operator source block in '
-            + 'tests/plinko/PlinkoTests.ts EXECUTES that file unmodified on all 8,100 captured bets: its validatePlinkoResult '
-            + 'bucket equals the served final_slot and src/rng.ts on 8,100/8,100, and the L/R path read from its own prefix '
-            + 'sums equals src/rng.ts\'s; (2) "fixed vectors" — the same block requires it to return the 7 known-answer '
-            + 'slots (one per config sampled); (3) "the adapter cites the operator source line it ports" — src/rng.ts '
-            + 'OPERATOR_SOURCE_CITES names 8 lines of the pinned file (L29 hex-decoded key … L60 position += value % 2, L63 '
-            + 'return) with the text each must carry, and checkOperatorCites FAILs any that does not: 8/8. Step 5 runs the '
-            + 'same execution and citation check in the verifier. FAIL probed: M07g (a logic line of the operator file '
-            + 'changed AND its pin recomputed → disagreement), M07h (a byte changed without re-pin → hash mismatch), M07i (a '
-            + 'citation moved to a line that does not carry its text). Not established: that the Verify button, or Duel\'s '
-            + 'server, runs exactly this code',
+        note: 'REWRITTEN 2026-10-20 (v1.4.0). src/rng.ts is rebuilt from a written specification, docs/ALGORITHM.md '
+            + '(framework games/plinko/ALGORITHM.md), by an implementer who never opened Duel\'s code; Duel\'s published '
+            + 'Verify-tab code is run as a second check, not used as the source. From 25 Sep 2026 through v1.3.0 src/rng.ts was '
+            + 'a port of that code and cited 8 of its lines (OPERATOR_SOURCE_CITES); the port and the citation table are gone. '
+            + 'The asserts: (1) "unit tests reproduce at least one captured bet from its revealed seed … against the operator\'s '
+            + 'published algorithm" — the Second check block in tests/plinko/PlinkoTests.ts EXECUTES Duel\'s Verify-tab file '
+            + '(evidence/verify-tab/duel-verify-tab-plinko-2026-09-25.js, copied verbatim by Paulo on 2026-09-25, duel.com → '
+            + 'Provably Fair → Verify → Expand → Copy, SHA-256 8b3366d1…, pinned with its runner in src/operator-verifier.ts) '
+            + 'unmodified on all 8,100 captured bets: its validatePlinkoResult bucket equals the served final_slot and '
+            + 'src/rng.ts on 8,100/8,100, and the L/R path read from its own prefix sums equals src/rng.ts\'s; (2) "fixed '
+            + 'vectors" — the same block requires it to return the 7 known-answer slots (one per config sampled), and '
+            + 'tests/plinko/RngSpecTests.ts runs the spec\'s own vectors and properties against src/rng.ts; (3) "the adapter '
+            + 'cites the operator source line it ports" — superseded for this package by the 20 Oct 2026 rule that RNG code is '
+            + 'rebuilt from a written spec: nothing is ported, so no operator line is cited; docs/ALGORITHM.md §4 names the '
+            + 'source of every step instead (Duel\'s public pages, the standard construction, Duel\'s public config, or the '
+            + '8,100 live bets). Step 5 runs the same execution in the verifier. FAIL probed: M07g (a logic line of the '
+            + 'operator file changed AND its pin recomputed → disagreement), M07h (a byte changed without re-pin → hash '
+            + 'mismatch). Not established: that the Verify button, or Duel\'s server, runs exactly this code',
     },
     {
         id: 'PLINKO-23', artifact: 'MANIFEST.md#verification-results + scripts/check-exploit-matrix.mjs', coverage: 'full',
@@ -1242,21 +1227,23 @@ exports.PACKAGE_CHECKS = [
     },
     {
         id: 'PLINKO-29', artifact: 'tests/mutations.json + scripts/mutate.mjs', coverage: 'full',
-        note: '53 step-named counterexamples in tests/mutations.json (49 until 14 October 2026, when the four '
-            + 'exit-5 entries MC3a, MC3as, MC3b and MC3bs were added) run in a disposable copy under `npm run mutate`; all 23 '
+        note: '52 step-named counterexamples in tests/mutations.json (49 until 14 October 2026, when the four '
+            + 'exit-5 entries MC3a, MC3as, MC3b and MC3bs were added; 53 until 20 October 2026, when M07i, which broke '
+            + 'a citation the rebuilt src/rng.ts no longer has, was retired) run in a disposable copy under `npm run mutate`; all 23 '
             + 'scored steps have at least one mutation that kills them, forgeries re-pin the SHA-256 they '
             + 'invalidated, and the battery refuses to score itself unless the unmutated copy is green first '
             + '(full Pass-1 replay). Mutations aimed at steps other than 19 run with PF_P1_REPLAY=off (Step 19 '
             + 'capped at FLAG; each kill is decided by its own step marker). Latest runs, recorded in MANIFEST.md: '
-            + 'the whole registry of 49 on 14 October 2026, 49/49 killed, 23/23 steps covered; then 10 entries '
-            + 'including the four MC3 entries, 10/10 killed; RELEASE-MANIFEST.json records 53/53. Run 2026-09-24: 45/46 killed, 23/23 '
+            + 'the whole registry of 52 on 20 October 2026, 52/52 killed, 23/23 steps covered, which RELEASE-MANIFEST.json '
+            + 'records; before it, the whole registry of 49 on 14 October 2026, 49/49 killed, 23/23 steps covered, then 10 entries '
+            + 'including the four MC3 entries, 10/10 killed. Run 2026-09-24: 45/46 killed, 23/23 '
             + 'steps covered; the one miss, M27, was a real regression of this round (the full replay had put '
             + 'the running-RTP points under tolerance) — fixed to exact comparison and M27 re-run: see MANIFEST.md. '
             + 'There are no declared survivors',
     },
     {
         id: 'PLINKO-30', artifact: 'MANIFEST.md#evidence + MANIFEST.md#limitations-and-trust', coverage: 'full',
-        note: 'MANIFEST Evidence numbers E01–E19 with their evidential role and now publishes the SHA-256 of '
+        note: 'MANIFEST Evidence numbers E01–E20 with their evidential role and now publishes the SHA-256 of '
             + 'every exhibit image (Step 22 allows exactly the hashes matching a real file in evidence/), and '
             + 'MANIFEST.md carries both a Declared Limitations register and a Load-Bearing Premises table',
     },
@@ -1309,86 +1296,113 @@ exports.runView = runView;
 },
 "src/rng.js": function(module, exports, require, __filename, __dirname) {
 "use strict";
-var __importDefault = (this && this.__importDefault) || function (mod) {
-    return (mod && mod.__esModule) ? mod : { "default": mod };
-};
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.BIT_EXTRACTION = exports.OPERATOR_SOURCE_CITES = void 0;
+exports.BIT_EXTRACTION = void 0;
 exports.bitExtractionBiasBound = bitExtractionBiasBound;
 exports.directionBit = directionBit;
-exports.computeSlotFromBuffer = computeSlotFromBuffer;
 exports.computePathFromBuffer = computePathFromBuffer;
+exports.computeSlotFromBuffer = computeSlotFromBuffer;
 exports.computeSlot = computeSlot;
 exports.verifyHash = verifyHash;
 exports.sha256Buffer = sha256Buffer;
-const crypto_1 = __importDefault(require("crypto"));
-exports.OPERATOR_SOURCE_CITES = Object.freeze([
-    { line: 29, text: 'const keyBytes = hexToBytes(keyHex);', ports: 'the server seed is hex-decoded to the HMAC key' },
-    { line: 35, text: "{ name: 'HMAC', hash: 'SHA-256' },", ports: 'HMAC-SHA256' },
-    { line: 48, text: 'let position = 0;', ports: 'slot starts at 0' },
-    { line: 50, text: 'for (let cursor = 0; cursor < rows; cursor++) {', ports: 'one HMAC per row, cursor = 0 … rows − 1' },
-    { line: 52, text: 'new TextEncoder().encode(`${clientSeed}:${nonce}:${cursor}`)', ports: 'the HMAC message' },
-    { line: 56, text: 'const value = parseInt(bounceHash.slice(0, 8), 16);', ports: 'BIT_EXTRACTION.hexChars = 8: first 4 bytes, big-endian' },
-    { line: 60, text: 'position += (value % 2);', ports: 'BIT_EXTRACTION.modulus = 2: odd = right (+1), even = left' },
-    { line: 63, text: 'return position;', ports: 'final_slot = the sum' },
-]);
+const crypto_1 = require("crypto");
 exports.BIT_EXTRACTION = Object.freeze({
     hexChars: 8,
     modulus: 2,
     rejectionSampling: false,
 });
+const MIN_ROWS = 8;
+const MAX_ROWS = 16;
+const HEX_RE = /^[0-9a-fA-F]*$/;
 function bitExtractionBiasBound() {
     const { hexChars, modulus, rejectionSampling } = exports.BIT_EXTRACTION;
-    const domainSize = Math.pow(2, 4 * hexChars);
+    const domainSize = 16 ** hexChars;
     const remainder = domainSize % modulus;
     const minResidueCount = Math.floor(domainSize / modulus);
-    const maxResidueCount = remainder === 0 ? minResidueCount : minResidueCount + 1;
-    const bias = Math.max(maxResidueCount / domainSize - 1 / modulus, 1 / modulus - minResidueCount / domainSize);
+    const maxResidueCount = minResidueCount + (remainder === 0 ? 0 : 1);
+    const rejectedDraws = rejectionSampling ? remainder : 0;
+    let bias;
+    if (rejectionSampling || remainder === 0) {
+        bias = 0;
+    }
+    else {
+        const hi = Math.abs(maxResidueCount / domainSize - 1 / modulus);
+        const lo = Math.abs(minResidueCount / domainSize - 1 / modulus);
+        bias = Math.max(hi, lo);
+    }
     return {
-        hexChars, modulus, domainSize, remainder,
-        minResidueCount, maxResidueCount,
+        hexChars,
+        modulus,
+        domainSize,
+        remainder,
+        minResidueCount,
+        maxResidueCount,
         bias,
-        exact: remainder === 0,
+        exact: bias === 0,
         rejectionSampling,
-        rejectedDraws: 0,
+        rejectedDraws,
     };
 }
 function directionBit(hmacHex) {
-    return parseInt(hmacHex.substring(0, exports.BIT_EXTRACTION.hexChars), 16) % exports.BIT_EXTRACTION.modulus;
-}
-function computeSlotFromBuffer(key, clientSeed, nonce, rows) {
-    let slot = 0;
-    for (let cursor = 0; cursor < rows; cursor++) {
-        const message = `${clientSeed}:${nonce}:${cursor}`;
-        const hmac = crypto_1.default.createHmac('sha256', key).update(message).digest('hex');
-        slot += directionBit(hmac);
+    const { hexChars, modulus } = exports.BIT_EXTRACTION;
+    if (hmacHex.length < hexChars || !HEX_RE.test(hmacHex)) {
+        throw new TypeError(`directionBit: expected a hex digest of at least ${hexChars} hex characters`);
     }
-    return slot;
+    const u = parseInt(hmacHex.slice(0, hexChars), 16);
+    return u % modulus;
+}
+function checkArgs(clientSeed, nonce, rows) {
+    if (typeof clientSeed !== "string") {
+        throw new TypeError("clientSeed must be a string");
+    }
+    if (!Number.isSafeInteger(nonce) || nonce < 0) {
+        throw new RangeError("nonce must be a non-negative safe integer");
+    }
+    if (!Number.isInteger(rows) || rows < MIN_ROWS || rows > MAX_ROWS) {
+        throw new RangeError(`rows must be an integer in ${MIN_ROWS}..${MAX_ROWS}`);
+    }
+}
+function rowDigestHex(key, clientSeed, nonce, i) {
+    const message = `${clientSeed}:${String(nonce)}:${String(i)}`;
+    return (0, crypto_1.createHmac)("sha256", key).update(Buffer.from(message, "utf8")).digest("hex");
 }
 function computePathFromBuffer(key, clientSeed, nonce, rows) {
+    checkArgs(clientSeed, nonce, rows);
     let slot = 0;
     let path = 0;
-    for (let cursor = 0; cursor < rows; cursor++) {
-        const message = `${clientSeed}:${nonce}:${cursor}`;
-        const hmac = crypto_1.default.createHmac('sha256', key).update(message).digest('hex');
-        const bit = directionBit(hmac);
+    for (let i = 0; i < rows; i++) {
+        const bit = directionBit(rowDigestHex(key, clientSeed, nonce, i));
         slot += bit;
-        path = path * 2 + bit;
+        path = (path << 1) | bit;
     }
     return { slot, path };
 }
+function computeSlotFromBuffer(key, clientSeed, nonce, rows) {
+    return computePathFromBuffer(key, clientSeed, nonce, rows).slot;
+}
+function decodeServerSeed(serverSeed) {
+    if (typeof serverSeed !== "string" || serverSeed.length !== 64 || !HEX_RE.test(serverSeed)) {
+        throw new TypeError("serverSeed must be 64 hex characters");
+    }
+    return Buffer.from(serverSeed, "hex");
+}
 function computeSlot(serverSeed, clientSeed, nonce, rows) {
-    return computeSlotFromBuffer(Buffer.from(serverSeed, 'hex'), clientSeed, nonce, rows);
+    return computeSlotFromBuffer(decodeServerSeed(serverSeed), clientSeed, nonce, rows);
 }
 function verifyHash(serverSeed, serverSeedHashed) {
-    const hash = crypto_1.default
-        .createHash('sha256')
-        .update(Buffer.from(serverSeed, 'hex'))
-        .digest('hex');
-    return hash === serverSeedHashed;
+    let key;
+    try {
+        key = decodeServerSeed(serverSeed);
+    }
+    catch {
+        return false;
+    }
+    if (typeof serverSeedHashed !== "string")
+        return false;
+    return sha256Buffer(key) === serverSeedHashed.toLowerCase();
 }
 function sha256Buffer(buf) {
-    return crypto_1.default.createHash('sha256').update(buf).digest('hex');
+    return (0, crypto_1.createHash)("sha256").update(buf).digest("hex");
 }
 
 },
@@ -3468,7 +3482,6 @@ function run(ctx) {
         const op = (0, operator_verifier_1.runOperatorVerifier)(siteBets.map(({ bet, serverSeed }) => ({
             id: String(bet.response.id), serverSeed, clientSeed: bet.response.client_seed, nonce: bet.response.nonce, rows: bet.request.rows,
         })));
-        const opCites = (0, operator_verifier_1.checkOperatorCites)();
         let opChecked = 0, opSlotVsServed = 0, opSlotVsRng = 0, opPathVsRng = 0;
         if (!op.results) {
             opIssues.push(`operator Verify-tab code: ${op.error}`);
@@ -3504,8 +3517,6 @@ function run(ctx) {
             if (opChecked !== loader_1.EXPECTED_BETS)
                 opIssues.push(`operator Verify-tab code ran on ${opChecked} bets, ${loader_1.EXPECTED_BETS} declared`);
         }
-        if (opCites.bad.length > 0 || opCites.checked === 0)
-            opIssues.push(`src/rng.ts operator citations: ${opCites.bad.slice(0, 2).join('; ')}`);
         if (opSlotVsServed + opSlotVsRng + opPathVsRng > 0) {
             opIssues.unshift(`operator Verify-tab code disagrees: bucket vs served on ${opSlotVsServed}, bucket vs src/rng.ts on ${opSlotVsRng}, path vs src/rng.ts on ${opPathVsRng} bet(s)`);
         }
@@ -3535,12 +3546,12 @@ function run(ctx) {
             operatorVerifier: {
                 files: op.files, provenance: operator_verifier_1.OPERATOR_VERIFIER_PROVENANCE, error: op.error,
                 betsExecuted: opChecked, bucketVsServed: opSlotVsServed, bucketVsRng: opSlotVsRng, pathVsRng: opPathVsRng,
-                citesChecked: opCites.checked, citesBad: opCites.bad.length,
                 compared: 'validatePlinkoResult bucket vs served final_slot and src/rng.ts; L/R path from its own prefix sums vs src/rng.ts',
             },
         };
         const r = failures.length === 0 && coverageIssues.length === 0 && biasIssues.length === 0 && siteIssues.length === 0
-            ? (0, context_1.pass)(5, 'Slot Recomputation & Bit-Extraction Bound', ['EC-6', 'EC-7'], `All ${checked}/${loader_1.EXPECTED_BETS} bets recomputed, 0 skipped: HMAC-SHA256 recompute matches final_slot. Outcome `
+            ? (0, context_1.pass)(5, 'Slot Recomputation & Bit-Extraction Bound', ['EC-6', 'EC-7'], `All ${checked}/${loader_1.EXPECTED_BETS} bets recomputed, 0 skipped: HMAC-SHA256 recompute by src/rng.ts, rebuilt from the `
+                + `written spec docs/ALGORITHM.md, matches final_slot. Outcome `
                 + `reproduces exactly from (server seed, client seed, nonce) — no external entropy. The direction extraction `
                 + `reads ${bias.hexChars} hex characters and takes the result modulo ${bias.modulus}; the domain divides `
                 + `exactly, so the worst-case modulo bias is computed rather than estimated and is reported in details `
@@ -3550,11 +3561,10 @@ function run(ctx) {
                 + `commitment hash and display-rounded multiplier agree with the capture on every bet; the docusaurus `
                 + `multiplier differs from the served one on exactly the declared ${siteMultDeclared} bets (its table is `
                 + `payout_tables, Duel pays scaling_edge[0]; largest gap ${siteMaxDelta.toExponential(2)}; L5). `
-                + `Operator-code parity (PLINKO-09): Duel's own Plinko Verify-tab code (${operator_verifier_1.OPERATOR_VERIFIER_PROVENANCE.savedAs}, `
+                + `Operator-code parity (PLINKO-09), a second check and not the source of src/rng.ts: Duel's own Plinko Verify-tab code (${operator_verifier_1.OPERATOR_VERIFIER_PROVENANCE.savedAs}, `
                 + `copied ${operator_verifier_1.OPERATOR_VERIFIER_PROVENANCE.copiedOn}, SHA-256-pinned) executed unmodified on ${opChecked}/${loader_1.EXPECTED_BETS} bets — `
                 + `its bucket equals the served final_slot and src/rng.ts on every bet, and the L/R path read from its own prefix sums `
-                + `equals src/rng.ts's (${opSlotVsServed + opSlotVsRng + opPathVsRng} disagreements); operator lines cited by src/rng.ts `
-                + `${opCites.checked - opCites.bad.length}/${opCites.checked} verbatim.`, details5)
+                + `equals src/rng.ts's (${opSlotVsServed + opSlotVsRng + opPathVsRng} disagreements).`, details5)
             : (0, context_1.fail)(5, 'Slot Recomputation & Bit-Extraction Bound', ['EC-6', 'EC-7'], 'HARD_FAIL', failures.length
                 ? `${failures.length} slot mismatches out of ${checked}`
                 : biasIssues.length

@@ -1,6 +1,6 @@
 # Duel Plinko — Provably Fair Audit
 
-**Auditor:** [ProvablyFair.org](https://www.provablyfair.org) · **Audit ID:** PF-2026-DL01 · **Release:** `v1.3.0` · **Capture:** 10 April 2026
+**Auditor:** [ProvablyFair.org](https://www.provablyfair.org) · **Audit ID:** PF-2026-DL01 · **Release:** `v1.4.0` · **Capture:** 10 April 2026
 
 **Result: PROVABLY FAIR — Full Pass.** All 8,100 captured bets reproduce from `(serverSeed, clientSeed, nonce)`: 8,100/8,100 slots, 0 mismatches. The verifier reports 23 scored steps: 22 PASS and one capture-origin flag on Step 4, with 0 hard fails and 0 verdict-affecting flags. The flag covers two capture retries whose missed nonces were reconstructed from revealed, commitment-matching server seeds; it is verdict-neutral and does not identify an operator defect.
 
@@ -10,7 +10,7 @@
 
 | Check | Captured evidence |
 |---|---|
-| Slots | 8,100 of 8,100 recomputed with HMAC-SHA256; Duel's own Verify-tab code agrees on bucket and L/R path on 8,100/8,100 |
+| Slots | 8,100 of 8,100 recomputed with HMAC-SHA256 by code rebuilt from a written spec ([docs/ALGORITHM.md](docs/ALGORITHM.md)) by an implementer who never opened Duel's code; Duel's own Verify-tab code, run as a second check and not used as the source, agrees on bucket and L/R path on 8,100/8,100 |
 | Seed records | 166 entries, 162 revealed seeds hash to their commitments; 166/166 next-seed promotions recomputed |
 | Nonces | 162 epochs of 50, sequential; 2 capture-retry epochs reconstructed from revealed seeds (capture-origin FLAG, L2) |
 | Payouts | 8,100/8,100 multipliers match `scaling_edge[0].multipliers`; `win_amount = amount_currency × payout_multiplier` on every bet |

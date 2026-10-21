@@ -232,24 +232,26 @@ export const PACKAGE_CHECKS: Array<{ id: string; artifact: string; coverage: Cov
   },
   {
     id: 'PLINKO-09',
-    artifact: 'tests/plinko/PlinkoTests.ts (Operator source block) + src/rng.ts OPERATOR_SOURCE_CITES + src/operator-verifier.ts + Step 5',
+    artifact: 'docs/ALGORITHM.md + tests/plinko/RngSpecTests.ts + tests/plinko/PlinkoTests.ts (Second check block) + src/operator-verifier.ts + Step 5',
     coverage: 'full',
-    note: 'CORRECTED 2026-09-25: the earlier note said the operator\'s algorithm was referenced only as an external '
-      + 'repository and a screenshot. Duel publishes it as source on its Verify tab (S10 already showed the whole '
-      + 'panel); it is now vendored: evidence/verify-tab/duel-verify-tab-plinko-2026-09-25.js, copied verbatim by '
-      + 'Paulo on 2026-09-25 (duel.com → Provably Fair → Verify → Expand → Copy), SHA-256 8b3366d1…, pinned with its '
-      + 'runner in src/operator-verifier.ts. The asserts, each met: (1) "unit tests reproduce at least one captured bet '
-      + 'from its revealed seed … against the operator\'s published algorithm" — the Operator source block in '
-      + 'tests/plinko/PlinkoTests.ts EXECUTES that file unmodified on all 8,100 captured bets: its validatePlinkoResult '
-      + 'bucket equals the served final_slot and src/rng.ts on 8,100/8,100, and the L/R path read from its own prefix '
-      + 'sums equals src/rng.ts\'s; (2) "fixed vectors" — the same block requires it to return the 7 known-answer '
-      + 'slots (one per config sampled); (3) "the adapter cites the operator source line it ports" — src/rng.ts '
-      + 'OPERATOR_SOURCE_CITES names 8 lines of the pinned file (L29 hex-decoded key … L60 position += value % 2, L63 '
-      + 'return) with the text each must carry, and checkOperatorCites FAILs any that does not: 8/8. Step 5 runs the '
-      + 'same execution and citation check in the verifier. FAIL probed: M07g (a logic line of the operator file '
-      + 'changed AND its pin recomputed → disagreement), M07h (a byte changed without re-pin → hash mismatch), M07i (a '
-      + 'citation moved to a line that does not carry its text). Not established: that the Verify button, or Duel\'s '
-      + 'server, runs exactly this code',
+    note: 'REWRITTEN 2026-10-20 (v1.4.0). src/rng.ts is rebuilt from a written specification, docs/ALGORITHM.md '
+      + '(framework games/plinko/ALGORITHM.md), by an implementer who never opened Duel\'s code; Duel\'s published '
+      + 'Verify-tab code is run as a second check, not used as the source. From 25 Sep 2026 through v1.3.0 src/rng.ts was '
+      + 'a port of that code and cited 8 of its lines (OPERATOR_SOURCE_CITES); the port and the citation table are gone. '
+      + 'The asserts: (1) "unit tests reproduce at least one captured bet from its revealed seed … against the operator\'s '
+      + 'published algorithm" — the Second check block in tests/plinko/PlinkoTests.ts EXECUTES Duel\'s Verify-tab file '
+      + '(evidence/verify-tab/duel-verify-tab-plinko-2026-09-25.js, copied verbatim by Paulo on 2026-09-25, duel.com → '
+      + 'Provably Fair → Verify → Expand → Copy, SHA-256 8b3366d1…, pinned with its runner in src/operator-verifier.ts) '
+      + 'unmodified on all 8,100 captured bets: its validatePlinkoResult bucket equals the served final_slot and '
+      + 'src/rng.ts on 8,100/8,100, and the L/R path read from its own prefix sums equals src/rng.ts\'s; (2) "fixed '
+      + 'vectors" — the same block requires it to return the 7 known-answer slots (one per config sampled), and '
+      + 'tests/plinko/RngSpecTests.ts runs the spec\'s own vectors and properties against src/rng.ts; (3) "the adapter '
+      + 'cites the operator source line it ports" — superseded for this package by the 20 Oct 2026 rule that RNG code is '
+      + 'rebuilt from a written spec: nothing is ported, so no operator line is cited; docs/ALGORITHM.md §4 names the '
+      + 'source of every step instead (Duel\'s public pages, the standard construction, Duel\'s public config, or the '
+      + '8,100 live bets). Step 5 runs the same execution in the verifier. FAIL probed: M07g (a logic line of the '
+      + 'operator file changed AND its pin recomputed → disagreement), M07h (a byte changed without re-pin → hash '
+      + 'mismatch). Not established: that the Verify button, or Duel\'s server, runs exactly this code',
   },
   {
     id: 'PLINKO-23', artifact: 'MANIFEST.md#verification-results + scripts/check-exploit-matrix.mjs', coverage: 'full',
@@ -324,21 +326,23 @@ export const PACKAGE_CHECKS: Array<{ id: string; artifact: string; coverage: Cov
   },
   {
     id: 'PLINKO-29', artifact: 'tests/mutations.json + scripts/mutate.mjs', coverage: 'full',
-    note: '53 step-named counterexamples in tests/mutations.json (49 until 14 October 2026, when the four '
-      + 'exit-5 entries MC3a, MC3as, MC3b and MC3bs were added) run in a disposable copy under `npm run mutate`; all 23 '
+    note: '52 step-named counterexamples in tests/mutations.json (49 until 14 October 2026, when the four '
+      + 'exit-5 entries MC3a, MC3as, MC3b and MC3bs were added; 53 until 20 October 2026, when M07i, which broke '
+      + 'a citation the rebuilt src/rng.ts no longer has, was retired) run in a disposable copy under `npm run mutate`; all 23 '
       + 'scored steps have at least one mutation that kills them, forgeries re-pin the SHA-256 they '
       + 'invalidated, and the battery refuses to score itself unless the unmutated copy is green first '
       + '(full Pass-1 replay). Mutations aimed at steps other than 19 run with PF_P1_REPLAY=off (Step 19 '
       + 'capped at FLAG; each kill is decided by its own step marker). Latest runs, recorded in MANIFEST.md: '
-      + 'the whole registry of 49 on 14 October 2026, 49/49 killed, 23/23 steps covered; then 10 entries '
-      + 'including the four MC3 entries, 10/10 killed; RELEASE-MANIFEST.json records 53/53. Run 2026-09-24: 45/46 killed, 23/23 '
+      + 'the whole registry of 52 on 20 October 2026, 52/52 killed, 23/23 steps covered, which RELEASE-MANIFEST.json '
+      + 'records; before it, the whole registry of 49 on 14 October 2026, 49/49 killed, 23/23 steps covered, then 10 entries '
+      + 'including the four MC3 entries, 10/10 killed. Run 2026-09-24: 45/46 killed, 23/23 '
       + 'steps covered; the one miss, M27, was a real regression of this round (the full replay had put '
       + 'the running-RTP points under tolerance) — fixed to exact comparison and M27 re-run: see MANIFEST.md. '
       + 'There are no declared survivors',
   },
   {
     id: 'PLINKO-30', artifact: 'MANIFEST.md#evidence + MANIFEST.md#limitations-and-trust', coverage: 'full',
-    note: 'MANIFEST Evidence numbers E01–E19 with their evidential role and now publishes the SHA-256 of '
+    note: 'MANIFEST Evidence numbers E01–E20 with their evidential role and now publishes the SHA-256 of '
       + 'every exhibit image (Step 22 allows exactly the hashes matching a real file in evidence/), and '
       + 'MANIFEST.md carries both a Declared Limitations register and a Load-Bearing Premises table',
   },

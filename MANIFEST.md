@@ -1,6 +1,6 @@
 # Duel Plinko — Consolidated Audit Overview
 
-**Audit ID:** PF-2026-DL01 · **Auditor:** ProvablyFair.org · **Release:** `v1.3.0` · **Framework:** 1.1
+**Audit ID:** PF-2026-DL01 · **Auditor:** ProvablyFair.org · **Release:** `v1.4.0` · **Framework:** 1.1
 
 Audited April 2026. Dataset of record captured on **10 April 2026**, from `2026-04-10T16:48:39.110Z` to `2026-04-10T19:22:55.922Z` on production `duel.com`. Publication date: 4 June 2026. Audit report: https://audit.provablyfair.org/casino/duel/games/plinko/overview. This overview consolidates the package documentation; the machine-readable release identity remains in [RELEASE-MANIFEST.json](RELEASE-MANIFEST.json).
 
@@ -53,14 +53,12 @@ The config is the audited multiplier table, operator-supplied, pinned and verifi
 
 Bets were captured by a console-injected JavaScript script that sent its own API requests from the logged-in Duel.com Plinko page and stored the responses. That script wrote the dataset; its methodology is [capture/capture-auto.reference.js](capture/capture-auto.reference.js), a reference record, not a runnable tool, and the dataset's seed entries have the shape its `doRotation` writes. It stored 13 verification-relevant fields per bet: id, rows, risk_level, final_slot, payout_multiplier, amount_currency, win_amount, nonce, server_seed_hashed, client_seed, transaction_id, effective_edge, created_at. The phase start and completion cards E01–E06 were rendered with the browser Canvas API in a February 2026 session by an earlier revision of the tracker recorded in [capture/plinko-capture.reference.js](capture/plinko-capture.reference.js) (same `renderCard` card; the recorded revision also prints a Phase D counter, which E01–E06 lack); that tracker did not write the dataset.
 
-The package ships four capture files. The two runnable ones have been in the workshop since its first commit (20 May 2026); the two reference records were copied byte for byte from the public `duel-plinko` v1.2.0 on 1 October 2026. No step reads or runs any of them.
+The runnable console forms of both capture scripts place bets on duel.com, so they are kept in the private audit workshop and are not published. This package ships their two reference records under `capture/`, copied byte for byte from the public `duel-plinko` v1.2.0 on 1 October 2026. No step reads or runs either of them.
 
 | File | What it is |
 |---|---|
-| [capture/capture-auto.js](capture/capture-auto.js) | The runnable console form of the dataset capture: paste it on the Plinko page, then `plinko.go()`. `diff` against `capture-auto.reference.js` finds 78 changed lines in 4 places: the header comment, the `window.plinko =` export, and the control functions `go`, `pause`, `save`, `status` and `clear`, which the reference copy drops. The rest, `doRotation` included, is the same line for line. Its `save()` writes `meta.schema` `duel-plinko-capture-v3` and names the file `plinko-master-<bets>bets.json`; the dataset's header carries that schema |
-| [capture/capture-auto.reference.js](capture/capture-auto.reference.js) | The same script as a reference record, not runnable; the one this overview cites |
-| [capture/plinko-capture.js](capture/plinko-capture.js) | The runnable console form of the tracker revision recorded in `plinko-capture.reference.js`. `diff` finds 43 changed lines in 4 places: the header listing its commands, the re-paste guard's formatting, the `window.plinko =` export and the command functions (`go`, `a` to `d` for the four phases, `pause`, `save`, `snap`, `status`, `clear`, `sync`, `loadConfig`, `state`, `phaseDSeed`). It did not write the dataset |
-| [capture/plinko-capture.reference.js](capture/plinko-capture.reference.js) | That tracker revision as a reference record, not runnable |
+| [capture/capture-auto.reference.js](capture/capture-auto.reference.js) | The dataset capture script as a reference record, not runnable; the one this overview cites. The runnable form adds a header comment, a `window.plinko =` export and the control functions `go`, `pause`, `save`, `status` and `clear`; the rest, `doRotation` included, is the same line for line (a `diff` of the two in the workshop, not checkable from this package). The dataset's header carries `meta.schema` `duel-plinko-capture-v3`; the code that writes it is in the withheld `save()`, so that it is this script's schema cannot be checked from this package |
+| [capture/plinko-capture.reference.js](capture/plinko-capture.reference.js) | A later revision of the February 2026 tracker that rendered E01–E06 (above), as a reference record, not runnable. It did not write the dataset |
 
 | Call | Role |
 |---|---|
@@ -81,22 +79,23 @@ A ball drops through a triangular field of pegs, bouncing left or right at each 
 HMAC-SHA256 per row. For each row `cursor ∈ [0, rows−1]`:
 
 ```
-key     = hexDecode(serverSeed)                      // 32 raw bytes
-message = clientSeed + ":" + nonce + ":" + cursor    // ASCII string
-hmac    = HMAC-SHA256(key, message)
-bit     = parseInt(hmac[0..7], 16) % 2               // first 4 bytes → uint32 → mod 2
-slot   += bit                                         // right = 1, left = 0
+key     = hexDecode(serverSeed)                          // 32 raw bytes (docs/ALGORITHM.md §2 Step 1)
+message = UTF-8(clientSeed + ":" + nonce + ":" + cursor) // plain decimal nonce and cursor
+digest  = HMAC-SHA256(key, message)                      // 32 bytes, one per row
+u       = digest[0..3] as unsigned 32-bit big-endian     // §2 Step 2
+bit     = u mod 2                                        // right = 1, left = 0
+slot   += bit                                            // §2 Step 3
 ```
 
 Final slot = sum of right-bounces across all rows (0 to `rows`). Payout = `bet × multiplier_table[risk][rows][slot]`.
 
 **Key encoding.** The server seed is a 64-character hex string decoded to 32 raw bytes before use as the HMAC key. Using the hex string as UTF-8 (64 bytes) gives completely different results. The nonce is an integer, not zero-padded; the cursor is the zero-based row index. No other field, drand included, appears in the message.
 
-**No modulo bias.** `value % 2` on a uint32: 2^32 = 4,294,967,296 divides exactly by 2, so exactly 2,147,483,648 values give each direction. Step 5 computes this bound from the parameters the code reads (8 hex characters, modulus 2) and reports bias 0 against the profile's 2^-32 ceiling. No draw is rejected. Each row uses a unique cursor, so per-row outcomes are independent.
+**No modulo bias.** `u mod 2` on a uint32: 2^32 = 4,294,967,296 divides exactly by 2, so exactly 2,147,483,648 values give each direction. Step 5 computes this bound from the parameters the code reads (8 hex characters, modulus 2) and reports bias 0 against the profile's 2^-32 ceiling. No draw is rejected. Each row uses a unique cursor, so per-row outcomes are independent.
 
 **drand.** `drand_round` and `drand_randomness` are not required for Plinko slot computation: all 8,100 slots reproduce from `(serverSeed, clientSeed, nonce, rows)` alone. drand is used in other Duel.com games.
 
-**Operator source (PLINKO-09).** Duel publishes its Plinko algorithm as source: the code panel of duel.com → Provably Fair → Verify (Plinko); screenshot S10 shows it expanded. Paulo copied it verbatim on 25 September 2026 (Expand → Copy) to `evidence/verify-tab/duel-verify-tab-plinko-2026-09-25.js` (SHA-256 `8b3366d1e91edb572cac288e0a853d2b560b2cf5c4468c6848439f957465c9ce`, 2,511 bytes; E19). It is pinned in `src/operator-verifier.ts` with its runner and **executed unmodified** by Step 5 on all 8,100 captured bets: its `validatePlinkoResult` bucket equals the served `final_slot` and `src/rng.ts` on 8,100/8,100, and the L/R path read from its own prefix sums (the same function called with rows = 1 … rows) equals `src/rng.ts`'s on 8,100/8,100. `src/rng.ts` cites 8 of its lines, each checked verbatim. Not established: that the live Verify button, or Duel's server, runs exactly this code. The RNG code in `src/rng.ts` is not an independent implementation: as its header states, it is ported from Duel's published Verify-tab code (E19) and checked against it, so a mistake in that code could be carried into it. The theoretical RTP does not use it: Step 17 derives the slot probabilities with `binomProb()` in `src/stats.ts`, and Step 19 scores the 27,000,000 Pass 1 slots the ported code produces against that binomial.
+**Where the RNG code comes from (PLINKO-09).** `src/rng.ts` is rebuilt from a written specification, [docs/ALGORITHM.md](docs/ALGORITHM.md) (E20), by an implementer who never opened Duel's code: the spec was written from Duel's public pages, the standard provably-fair construction, Duel's public plinko config and the 8,100 live bets, and its §8 lists every file read; the implementer read only that spec and a module-interface file. `tests/plinko/RngSpecTests.ts` runs the spec's own test vectors and properties against it. Duel's published Verify-tab code is run as a second check, not used as the source: Duel publishes its Plinko algorithm in the code panel of duel.com → Provably Fair → Verify (Plinko); screenshot S10 shows it expanded. Paulo copied it verbatim on 25 September 2026 (Expand → Copy) to `evidence/verify-tab/duel-verify-tab-plinko-2026-09-25.js` (SHA-256 `8b3366d1e91edb572cac288e0a853d2b560b2cf5c4468c6848439f957465c9ce`, 2,511 bytes; E19). It is pinned in `src/operator-verifier.ts` with its runner and **executed unmodified** by Step 5 on all 8,100 captured bets: its `validatePlinkoResult` bucket equals the served `final_slot` and `src/rng.ts` on 8,100/8,100, and the L/R path read from its own prefix sums (the same function called with rows = 1 … rows) equals `src/rng.ts`'s on 8,100/8,100. Not established: that the live Verify button, or Duel's server, runs exactly this code. From 25 September 2026 through v1.3.0, `src/rng.ts` was ported from that file and cited 8 of its lines; since v1.4.0 `src/rng.ts` is not derived from it. The theoretical RTP does not use `src/rng.ts`: Step 17 derives the slot probabilities with `binomProb()` in `src/stats.ts`, and Step 19 scores the 27,000,000 Pass 1 slots `src/rng.ts` produces against that binomial.
 
 ### Worked example
 
@@ -399,7 +398,7 @@ Budget: allow **20 minutes on 2 cores** and **6 minutes on 12**. A run far outsi
 | `npm run simulate` | 27M-round two-pass simulation; regenerates the artifact of record from `SIM_SEEDS` |
 | `npm run verify` | 23-step verification of the captured dataset |
 | `npm run test:full` | Regenerate the simulation into `outputs/run/`, diff it, then `npm test` |
-| `npm run mutate` | Falsifiability gate: 53 counterexamples, each must be rejected (MC3a, MC3as, MC3bs with exit 1, MC3b with exit 5) |
+| `npm run mutate` | Falsifiability gate: 52 counterexamples, each must be rejected (MC3a, MC3as, MC3bs with exit 1, MC3b with exit 5) |
 
 Verify the two input identities independently with `shasum -a 256 data/plinko-master-8100bets.json plinkoConfig.json`.
 
@@ -424,7 +423,7 @@ Exit codes are the verdict, so nothing automated can read a Conditional Pass as 
 | `2` | at least one FLAG — `PROVABLY FAIR — Conditional Pass` |
 | `5` | `RTP FIGURE OVERSTATED`: no draw check failed, but the RTP-CLAIM rule (1.2.0, switched on) found settings beyond the 0.1 pp band on the house side of the published figure. It outranks a Conditional Pass; a hard fail (exit 1) outranks it |
 
-**Falsifiability:** 53 counterexamples in `tests/mutations.json` (49 until 14 October 2026), run by `npm run mutate` in a disposable copy. Every one of the 23 scored steps has at least one mutation that kills it; forgeries among them re-pin the SHA-256 they invalidated. Mutations aimed at a step other than 19 run with `PF_P1_REPLAY=off` (Step 19 capped at FLAG); the baseline and Step 19's mutations run the full replay. The release manifest records 53/53 killed (the 49/49 whole-registry run below plus the four C3 entries, run on their own), 23/23 scored steps covered. Rerun on 5 October 2026: 49/49 killed, 23/23 scored steps covered. Rerun on 14 October 2026 on the tree carrying RTP-CLAIM 1.2.0 switched on: 49/49 killed, 23/23 scored steps covered. Second pass, 14–15 October 2026 (FIXPASS2 class C3, the exit-5 entries): see the release-history entry "14 October 2026 (second pass)"; the release manifest records that run.
+**Falsifiability:** 52 counterexamples in `tests/mutations.json` (49 until 14 October 2026, then 53 until M07i was retired on 20 October 2026; release history v1.4.0), run by `npm run mutate` in a disposable copy. Every one of the 23 scored steps has at least one mutation that kills it; forgeries among them re-pin the SHA-256 they invalidated. Mutations aimed at a step other than 19 run with `PF_P1_REPLAY=off` (Step 19 capped at FLAG); the baseline and Step 19's mutations run the full replay. The release manifest records 52/52 killed, 23/23 scored steps covered, from the whole-registry run of 20 October 2026 (release history v1.4.0). Until 20 October 2026 the release manifest recorded 53/53 (the 49/49 whole-registry run below plus the four C3 entries, run on their own). Rerun on 5 October 2026: 49/49 killed, 23/23 scored steps covered. Rerun on 14 October 2026 on the tree carrying RTP-CLAIM 1.2.0 switched on: 49/49 killed, 23/23 scored steps covered. Second pass, 14–15 October 2026 (FIXPASS2 class C3, the exit-5 entries): see the release-history entry "14 October 2026 (second pass)"; the release manifest records that run.
 
 **Deliberate artifact refresh.** After an intentional source edit, `npm ci --include=dev` and `npm run build` rebuild `verify.js` and `test.js` and their build manifest; `PF_EMIT=1 npm run verify` (`npm run report`) refreshes `outputs/verification-results.json`; `npm run release-manifest` rewrites `RELEASE-MANIFEST.json`, and `node scripts/release-manifest.mjs --check` confirms it. Step 22 counts the published Markdown files and the 64-hex tokens in them, so a documentation change that adds or removes either changes that step's detail line and needs this refresh; numerical results do not change.
 
@@ -437,13 +436,13 @@ Every drop resolves from four values: `serverSeedHashed` (the operator's commitm
 **1. The commitment held.** The revealed seed hashes to the commitment you saved before betting. Run `await verifyHash(serverSeed, savedServerSeedHashed)`:
 
 ```js
+// docs/ALGORITHM.md §1.2: commitment = lowercase hex of SHA-256 over the 32 bytes the seed's 64 hex characters encode
 async function verifyHash(serverSeed, savedServerSeedHashed) {  // savedServerSeedHashed = your copy from before the bet
-  const seedBytes = new Uint8Array(serverSeed.match(/../g).map(b => parseInt(b, 16)));
-  const hashBuffer = await crypto.subtle.digest('SHA-256', seedBytes);
-  const computed = Array.from(new Uint8Array(hashBuffer))
-    .map(b => b.toString(16).padStart(2, '0'))
-    .join('');
-  console.log(computed === savedServerSeedHashed ? 'PASS' : `FAIL: got ${computed}`);
+  const seedBytes = Uint8Array.from({ length: serverSeed.length / 2 }, (_, i) => Number.parseInt(serverSeed.substr(2 * i, 2), 16));
+  const sha = new Uint8Array(await crypto.subtle.digest('SHA-256', seedBytes));
+  let computed = '';
+  for (const byte of sha) computed += byte.toString(16).padStart(2, '0');
+  console.log(computed === savedServerSeedHashed.toLowerCase() ? 'PASS' : `FAIL: got ${computed}`);
 }
 ```
 
@@ -452,15 +451,18 @@ A `PASS` means the two hashes are equal: the revealed seed is consistent with th
 **2. The seeds force the slot.** Recompute the landing slot and confirm it matches the bet's recorded `final_slot`. Paste the function, then run `await computeSlot(serverSeed, clientSeed, nonce, rows)` with your values:
 
 ```js
+// docs/ALGORITHM.md §2: one HMAC per row, bit = first 4 digest bytes (big-endian) mod 2, slot = sum of bits
 async function computeSlot(serverSeed, clientSeed, nonce, rows) {  // rows = the board you played, 8 to 16
-  const keyBytes = new Uint8Array(serverSeed.match(/../g).map(b => parseInt(b, 16)));   // hex-decode the seed
-  const key = await crypto.subtle.importKey('raw', keyBytes, { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']);
-  let slot = 0;
-  for (let cursor = 0; cursor < rows; cursor++) {
-    const mac = await crypto.subtle.sign('HMAC', key, new TextEncoder().encode(`${clientSeed}:${nonce}:${cursor}`));
-    slot += new DataView(mac).getUint32(0) % 2;   // first 4 bytes as uint32: odd = right (+1), even = left (+0)
+  const seedBytes = Uint8Array.from({ length: serverSeed.length / 2 }, (_, i) => Number.parseInt(serverSeed.substr(2 * i, 2), 16));
+  const hmacKey = await crypto.subtle.importKey('raw', seedBytes, { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']);
+  const bits = [];
+  for (let i = 0; i < rows; i++) {                                    // Step 1: row cursor i = 0 … rows − 1
+    const message = new TextEncoder().encode(clientSeed + ':' + nonce + ':' + i);
+    const digest = new DataView(await crypto.subtle.sign('HMAC', hmacKey, message));
+    bits.push(digest.getUint32(0, false) % 2);                        // Step 2: u_i big-endian, bit_i = u_i mod 2
   }
-  console.log('slot', slot);
+  const slot = bits.reduce((sum, bit) => sum + bit, 0);               // Step 3: slot = number of 1 bits
+  console.log('slot', slot, 'bits', bits.join(''));
   return slot;
 }
 ```
@@ -486,14 +488,15 @@ The primary evidence is the 10 April 2026 capture of 8,100 bets, its revealed se
 | E09 | [outputs/determinism-log.json](outputs/determinism-log.json) | Determinism log: 8,100 verified, 0 mismatches, 0 skipped |
 | E10 | [outputs/simulation-results.json](outputs/simulation-results.json) | Two-pass simulation: Pass 1 27,000,000 rounds × 27 configs; Pass 2 162 seeds × 10,000 nonces (242 seed×row combinations) |
 | E11 | [plinkoConfig.json](plinkoConfig.json); [evidence/E11-plinko-config-2026-10-05.json](evidence/E11-plinko-config-2026-10-05.json) | Plinko configuration as served by Duel.com at `GET /api/v2/games/plinko/config`, kept with its `{success, data}` envelope; the duel.com config as fetched 2026-10-05 in a logged-in session (read-only GET) returned identical bytes: payout_tables, probabilities, scaling_edge (191 brackets per config, house_edge 0.001–0.02), rows {min:8, max:16}, risk_levels [low, medium, high]. That response body (HTTP 200, fetched 2026-10-05 at 12:15:57 UTC) is saved unedited as `evidence/E11-plinko-config-2026-10-05.json`: SHA-256 `78f0a39201a8c24fd1577143732e004f77e27d4d36efeedc6b3f7b93b2078fed`, 2,663,430 bytes, the same as `plinkoConfig.json`. Its request path, status, response headers and fetch time are in [evidence/E11-plinko-config-2026-10-05.json.meta.json](evidence/E11-plinko-config-2026-10-05.json.meta.json) (4,813 bytes), also unedited. Checked before committing: every string in the body is a decimal number except the three risk-level names and their three descriptions, no field holds an account, session or token value, the recorded response headers include no `Set-Cookie`, and nothing is redacted. The verifier pins and reads `plinkoConfig.json`; no step reads the dated copy and the release manifest does not hash it |
-| E12 | [src/rng.ts](src/rng.ts) | HMAC-SHA256 RNG code ported from Duel's published Verify-tab code (E19) and checked against it, 8 of its lines cited verbatim (PLINKO-09): `computeSlot(serverSeed, clientSeed, nonce, rows)`, `verifyHash` |
+| E12 | [src/rng.ts](src/rng.ts) | HMAC-SHA256 RNG code rebuilt from the written spec E20 by an implementer who never opened Duel's code; Duel's published Verify-tab code (E19) is run against it as a second check, not used as its source (PLINKO-09): `computeSlot(serverSeed, clientSeed, nonce, rows)`, `verifyHash` |
 | E13 | [tests/verify.ts](tests/verify.ts) | 23-step verification suite; runs against E07 using E11 for config |
 | E14 | [src/simulate.ts](src/simulate.ts) | Two-pass Monte Carlo simulation |
 | E15 | https://github.com/paulocentr/duelplinko — `src/plinko/PlinkoResultsGenerator.ts` | Duel.com Plinko reference implementation (prior audit). Direction convention `slot += int % 2` (odd = right). Not included in this deliverable; referenced for cross-check only |
 | E16 | [data/plinko-master-8100bets.json](data/plinko-master-8100bets.json) (Phase D subset) | Phase D: 500 bets at $0.01, all 27 configs (18–19 bets each across 10 epochs), 10 distinct pfaudit-prefixed custom client seeds, 500/500 slot recomputation pass |
 | E17 | [outputs/chi-squared-results.json](outputs/chi-squared-results.json) | Live-bet chi-squared: 26/27 configs pass at α=0.01, with per-config statistics, p-values, df and slot frequency tables |
 | E18 | [outputs/rtp-convergence.html](outputs/rtp-convergence.html) | Self-contained RTP convergence chart, inline SVG since v1.2.0; cumulative average RTP across the simulated rounds against the theoretical 99.9% |
-| E19 | [evidence/verify-tab/duel-verify-tab-plinko-2026-09-25.js](evidence/verify-tab/duel-verify-tab-plinko-2026-09-25.js) | Duel's own Plinko verification code: the code panel of duel.com → Provably Fair → Verify (Plinko) → Expand → Copy, copied verbatim by Paulo on 2026-09-25 and never edited. SHA-256 `8b3366d1e91edb572cac288e0a853d2b560b2cf5c4468c6848439f957465c9ce`, 2,511 bytes, 74 lines. Pinned in `src/operator-verifier.ts` with its runner `verifier-parity/operator/run-operator-verifier.cjs`, executed unmodified by Step 5 on all 8,100 captured bets (bucket and L/R path, 0 disagreements), and cited line by line in `src/rng.ts` (PLINKO-09). This, not E15, is the operator's published source |
+| E19 | [evidence/verify-tab/duel-verify-tab-plinko-2026-09-25.js](evidence/verify-tab/duel-verify-tab-plinko-2026-09-25.js) | Duel's own Plinko verification code: the code panel of duel.com → Provably Fair → Verify (Plinko) → Expand → Copy, copied verbatim by Paulo on 2026-09-25 and never edited. SHA-256 `8b3366d1e91edb572cac288e0a853d2b560b2cf5c4468c6848439f957465c9ce`, 2,511 bytes, 74 lines. Pinned in `src/operator-verifier.ts` with its runner `verifier-parity/operator/run-operator-verifier.cjs`, executed unmodified by Step 5 on all 8,100 captured bets (bucket and L/R path, 0 disagreements) as a second check on `src/rng.ts`, which is not derived from it (PLINKO-09). This, not E15, is the operator's published source |
+| E20 | [docs/ALGORITHM.md](docs/ALGORITHM.md) | The written specification `src/rng.ts` is rebuilt from: a copy of `games/plinko/ALGORITHM.md` in the ProvablyFair.org audit framework with the spec author's workspace paths replaced by package paths or neutral wording (its header says so), written 20 October 2026 without opening Duel's code (its §8 lists every file read), each step sourced to Duel's public pages, the standard construction, Duel's public config or the 8,100 live bets; its §5 vectors are run by `tests/plinko/RngSpecTests.ts` |
 
 | ID | File | Description |
 |----|------|-------------|
@@ -594,10 +597,21 @@ For players: record `serverSeedHashed` before betting and check it after the rev
 | `v1.1.1` | Errata: the pinned simulation artifact is serialised as `simulate.ts` writes it; it had been re-serialised outside the generator. No figure changed. | unchanged |
 | `v1.2.0` | Reproduction gate, exit codes and artifact hygiene, below. No figure, step result or verdict changed. | unchanged |
 | `v1.3.0` | Conformance pass against the Plinko game profile, below, re-certified under Framework 1.1. One new scored step, ten strengthened, and a falsifiability gate. The verdict did not change. | unchanged |
+| `v1.4.0` | RNG code rebuilt from a written spec, below; Duel's Verify-tab code kept as a second check only. Final QA corrections of 21 October 2026, below. | unchanged |
+
+### v1.4.0
+
+- **RNG code rebuilt from a written spec (20 October 2026).** `src/rng.ts` is replaced by a module rebuilt from [docs/ALGORITHM.md](docs/ALGORITHM.md) (E20) by an implementer who read only that spec and a module-interface file and never opened Duel's code, its Verify-tab file or the earlier `src/rng.ts`. Until v1.3.0 it was ported from Duel's published Verify-tab code (E19) and cited 8 of its lines (`OPERATOR_SOURCE_CITES`); the port and the citation table are removed, with the citation check in Step 5 and the unit tests and mutation M07i, which broke a citation. Mutations M08 and M31 now target the same logic in the rebuilt module. Duel's Verify-tab code is still executed unmodified on all 8,100 bets by Step 5, as a second check, not as the source.
+- **Three-way agreement, measured on integration.** The rebuilt module against the live bets: commitment 8,100/8,100, `final_slot` 8,100/8,100; against Duel's Verify-tab code: bucket 8,100/8,100, ordered L/R path 8,100/8,100; against the provablyfair.org live verifier: slot 8,100/8,100, L/R path 8,100/8,100.
+- **Spec self-test.** `tests/plinko/RngSpecTests.ts` runs the spec's §5 vectors and properties against `src/rng.ts` (71 checks).
+- **Player snippets rewritten from the specification.** The `verifyHash` and `computeSlot` console functions in [Verify a bet](#verify-a-bet) and the per-row pseudo-code in [Game and algorithm](#game-and-algorithm) now follow [docs/ALGORITHM.md](docs/ALGORITHM.md) §1.2 and §2 step by step (one HMAC per row, the first four digest bytes as a big-endian uint32, bit = u mod 2, slot = the number of 1 bits); `computeSlot` also prints the bits. Taken from this file and run under Node's Web Crypto, they give slot 5 (bits 11100110) and slot 9 for the two worked examples and the served `final_slot` on 8,100/8,100 bets, and `verifyHash` prints PASS for 162/162 revealed seeds. No step, figure or verdict changed.
+- **Battery rerun (20 October 2026, Apple M2 Max, Node v22.23.1).** `npm run mutate`, 52 entries after M07i's retirement: 52/52 killed, 23/23 scored steps covered; the release manifest records 52/52. The verdict, the 22 PASS and one capture-origin FLAG, and the pinned simulation, determinism and chi-squared artifacts are unchanged; `outputs/verification-results.json` was re-emitted with `PF_EMIT=1 npm run verify` (the Step 5 summary and the PLINKO-09 note), `test.js` and `verify.js` rebuilt with `npm run build`.
+- **Final QA corrections (21 October 2026).** No draw check, scored step status, figure or verdict changed. (1) Version labels: the header of this document and the README said "unreleased"; they now name `v1.4.0`. `RELEASE-MANIFEST.json` carried v1.3.0's signature under release v1.4.0 before v1.4.0 was signed; until the tag its `signature` was null and a `pending` line said v1.4.0 was not tagged or signed. (2) Capture files: [Capture method and API](#capture-method-and-api) linked the two runnable capture scripts, which are not in the published package because they place bets on duel.com and stay in the private workshop; it now lists only the two reference records that ship and says which statements about the runnable scripts cannot be checked from this package. (3) Mutation count: [Reproduce the audit](#reproduce-the-audit) and the PLINKO-29 note still said 53 counterexamples and that the release manifest records 53/53; `tests/mutations.json` holds 52 since M07i's retirement and the release manifest records 52/52, so both now say that. The PLINKO-30 note's exhibit range reads E01–E20. `outputs/verification-results.json` was re-emitted with `PF_EMIT=1 npm run verify` (the PLINKO-29 and PLINKO-30 notes), `test.js` and `verify.js` rebuilt with `npm run build`, and the release manifest refreshed with `npm run release-manifest`.
+- **Release wording.** At tagging, the README, this overview and the release manifest stopped describing `v1.4.0` as a draft until tagged. The release manifest records `v1.4.0`, superseding `v1.3.0`, and the fingerprint of the ProvablyFair.org signing key (`signature`, `SHA256:gEujiJm2pRyq7lQsfYQfQ1r97H/J7GdaKHbOW8GtikY`), as tagged `v1.4.0`; it was refreshed with `npm run release-manifest`. No check, figure or verdict changed.
 
 ### v1.3.0
 
-- **Falsifiability.** `npm run mutate` applies 49 counterexamples in a disposable copy, including forgeries that re-pin the hash they invalidate; each must be rejected by a named scored step. 49/49 killed, 23/23 scored steps covered. The second pass of 14 October 2026 (below) added four, for 53; the release manifest records 53/53. The runner copies `outputs/rtp-claim-table.json` into the disposable copy, without which its baseline failed once the RTP claim table was added; the Step 10, 11 and 13 mutations expect the `[FLAG:operator]` tag those FLAG-severity steps print.
+- **Falsifiability.** `npm run mutate` applies 49 counterexamples in a disposable copy, including forgeries that re-pin the hash they invalidate; each must be rejected by a named scored step. 49/49 killed, 23/23 scored steps covered. The second pass of 14 October 2026 (below) added four, for 53; the release manifest recorded 53/53 until 20 October 2026 (v1.4.0, above). The runner copies `outputs/rtp-claim-table.json` into the disposable copy, without which its baseline failed once the RTP claim table was added; the Step 10, 11 and 13 mutations expect the `[FLAG:operator]` tag those FLAG-severity steps print.
 - **Step 22 (new).** Every 64-hex value in the published Markdown must resolve to a pin declared in `src/`, a value in the audited dataset or config, or an exhibit image in `evidence/`. The only other token it accepts is the all-zero placeholder, which the published Markdown does not contain.
 - **Step 15** compares the dataset hash with the single pin in `src/loader.ts`, which the pre-flight guard also reads.
 - **Step 19** re-derives RTP, standard error, chi-squared and p-values from the committed histograms, scores the run against theoretical RTP at 5 SE, and replays all 27,000,000 Pass 1 rounds from the pinned seeds: census exact, 691 derived figures within tolerance.

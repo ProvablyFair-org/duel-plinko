@@ -1,6 +1,10 @@
 /**
  * Steps 5–6: RNG Determinism
  * EC-6, EC-7, EC-27
+ *
+ * Step 5 recomputes every bet with src/rng.ts, rebuilt from the written spec docs/ALGORITHM.md by an
+ * implementer who never opened Duel's code, then runs Duel's own Verify-tab code (PLINKO-09) and the
+ * two ProvablyFair.org player verifiers (PLINKO-24) on the same bets as second checks.
  */
 
 import type { StepResult, RiskLevel } from '../../src/types';
@@ -11,7 +15,7 @@ import { pass, fail, VerifyContext, tag } from './context';
 import { loadSiteVerifier, SITE_VERIFIER_PROVENANCE, DECLARED_SITE_MULTIPLIER_DIVERGENCE } from '../../src/site-verifier';
 import { runLiveSiteVerifier, LIVE_SITE_PROVENANCE } from '../../src/live-site-verifier';
 import {
-  runOperatorVerifier, checkOperatorCites, pathFromPrefixes, OPERATOR_EXPECTED_LOGS, OPERATOR_VERIFIER_PROVENANCE,
+  runOperatorVerifier, pathFromPrefixes, OPERATOR_EXPECTED_LOGS, OPERATOR_VERIFIER_PROVENANCE,
 } from '../../src/operator-verifier';
 
 /**
@@ -184,19 +188,19 @@ export function run(ctx: VerifyContext): StepResult[] {
     if (siteMultUndeclared > 0) siteIssues.unshift(`docusaurus site verifier multiplier differs from the served one on ${siteMultUndeclared} bet(s) outside the declared divergence`);
     if (liveMismatch > 0) siteIssues.unshift(`live-site verifier disagrees on ${liveMismatch} bet(s)`);
 
-    // ── Operator-code parity (profile PLINKO-09) ───────────────────────────────
+    // ── Operator-code parity (profile PLINKO-09), a SECOND CHECK ────────────────
+    // src/rng.ts is rebuilt from the written spec docs/ALGORITHM.md, not from this code; Duel's file is
+    // run here as a cross-check of that rebuild and of the served slots, never as its source.
     // Duel's own Plinko code panel (duel.com → Provably Fair → Verify → Expand → Copy, 2026-09-25),
     // vendored verbatim under evidence/verify-tab/ and pinned in src/operator-verifier.ts, EXECUTED
     // unmodified on every captured bet: its validatePlinkoResult bucket must equal the served
     // final_slot and src/rng.ts, and the L/R path read from its own prefix sums must equal
-    // src/rng.ts's path. It must print only its empty-input message, and every operator line
-    // src/rng.ts cites must carry the quoted text. HARD FAIL otherwise, or on a count other than
-    // EXPECTED_BETS.
+    // src/rng.ts's path. It must print only its empty-input message. HARD FAIL otherwise, or on a
+    // count other than EXPECTED_BETS.
     const opIssues: string[] = [];
     const op = runOperatorVerifier(siteBets.map(({ bet, serverSeed }) => ({
       id: String(bet.response.id), serverSeed, clientSeed: bet.response.client_seed, nonce: bet.response.nonce, rows: bet.request.rows,
     })));
-    const opCites = checkOperatorCites();
     let opChecked = 0, opSlotVsServed = 0, opSlotVsRng = 0, opPathVsRng = 0;
     if (!op.results) {
       opIssues.push(`operator Verify-tab code: ${op.error}`);
@@ -220,7 +224,6 @@ export function run(ctx: VerifyContext): StepResult[] {
       }
       if (opChecked !== EXPECTED_BETS) opIssues.push(`operator Verify-tab code ran on ${opChecked} bets, ${EXPECTED_BETS} declared`);
     }
-    if (opCites.bad.length > 0 || opCites.checked === 0) opIssues.push(`src/rng.ts operator citations: ${opCites.bad.slice(0, 2).join('; ')}`);
     if (opSlotVsServed + opSlotVsRng + opPathVsRng > 0) {
       opIssues.unshift(`operator Verify-tab code disagrees: bucket vs served on ${opSlotVsServed}, bucket vs src/rng.ts on ${opSlotVsRng}, path vs src/rng.ts on ${opPathVsRng} bet(s)`);
     }
@@ -251,14 +254,14 @@ export function run(ctx: VerifyContext): StepResult[] {
       operatorVerifier: {
         files: op.files, provenance: OPERATOR_VERIFIER_PROVENANCE, error: op.error,
         betsExecuted: opChecked, bucketVsServed: opSlotVsServed, bucketVsRng: opSlotVsRng, pathVsRng: opPathVsRng,
-        citesChecked: opCites.checked, citesBad: opCites.bad.length,
         compared: 'validatePlinkoResult bucket vs served final_slot and src/rng.ts; L/R path from its own prefix sums vs src/rng.ts',
       },
     };
 
     const r = failures.length === 0 && coverageIssues.length === 0 && biasIssues.length === 0 && siteIssues.length === 0
       ? pass(5, 'Slot Recomputation & Bit-Extraction Bound', ['EC-6', 'EC-7'],
-          `All ${checked}/${EXPECTED_BETS} bets recomputed, 0 skipped: HMAC-SHA256 recompute matches final_slot. Outcome `
+          `All ${checked}/${EXPECTED_BETS} bets recomputed, 0 skipped: HMAC-SHA256 recompute by src/rng.ts, rebuilt from the `
+          + `written spec docs/ALGORITHM.md, matches final_slot. Outcome `
           + `reproduces exactly from (server seed, client seed, nonce) — no external entropy. The direction extraction `
           + `reads ${bias.hexChars} hex characters and takes the result modulo ${bias.modulus}; the domain divides `
           + `exactly, so the worst-case modulo bias is computed rather than estimated and is reported in details `
@@ -268,11 +271,10 @@ export function run(ctx: VerifyContext): StepResult[] {
           + `commitment hash and display-rounded multiplier agree with the capture on every bet; the docusaurus `
           + `multiplier differs from the served one on exactly the declared ${siteMultDeclared} bets (its table is `
           + `payout_tables, Duel pays scaling_edge[0]; largest gap ${siteMaxDelta.toExponential(2)}; L5). `
-          + `Operator-code parity (PLINKO-09): Duel's own Plinko Verify-tab code (${OPERATOR_VERIFIER_PROVENANCE.savedAs}, `
+          + `Operator-code parity (PLINKO-09), a second check and not the source of src/rng.ts: Duel's own Plinko Verify-tab code (${OPERATOR_VERIFIER_PROVENANCE.savedAs}, `
           + `copied ${OPERATOR_VERIFIER_PROVENANCE.copiedOn}, SHA-256-pinned) executed unmodified on ${opChecked}/${EXPECTED_BETS} bets — `
           + `its bucket equals the served final_slot and src/rng.ts on every bet, and the L/R path read from its own prefix sums `
-          + `equals src/rng.ts's (${opSlotVsServed + opSlotVsRng + opPathVsRng} disagreements); operator lines cited by src/rng.ts `
-          + `${opCites.checked - opCites.bad.length}/${opCites.checked} verbatim.`,
+          + `equals src/rng.ts's (${opSlotVsServed + opSlotVsRng + opPathVsRng} disagreements).`,
           details5)
       : fail(5, 'Slot Recomputation & Bit-Extraction Bound', ['EC-6', 'EC-7'], 'HARD_FAIL',
           failures.length

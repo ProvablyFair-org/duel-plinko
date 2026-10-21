@@ -6,7 +6,7 @@
  *                                                       every pinned chunk from the live site
  *   node scripts/check-live-site-verifier.mjs <dir>          compare a local directory of downloaded chunks
  *
- * Step 5 proves the VENDORED bundle (verifier-parity/live-site/chunks/) prints the port's layout on
+ * Step 5 proves the VENDORED bundle (verifier-parity/live-site/chunks/) prints src/rng.ts's slot and path on
  * every captured round; this script proves the LIVE site still serves those exact bytes. For each
  * pinned chunk in src/live-site-verifier.ts LIVE_SITE_PINS (read from that file, so the pins have one
  * home) it requires (1) --live only: the page HTML still references /_next/static/chunks/<name>, and

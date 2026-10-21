@@ -6,7 +6,7 @@
  * chunks: chunk 34934e0e762aa37e.js carries the page module (Turbopack module 7721), whose verifier
  * class dispatches `VERIFY({ casinoName, ... })` to verifyHouseBetsGame (HouseBets) or
  * verifyDuelsGame (Duel.com). A player who pastes a bet into that page is trusting THAT code, not
- * this package's port. Its source repository is not available to this audit; the deployed bundle is.
+ * this package's src/rng.ts. Its source repository is not available to this audit; the deployed bundle is.
  * (Checked in a browser on 2026-09-24: the page's Casino picker offers only Duel.com.)
  *
  * WHAT THIS FILE DOES (ported from pf-duel-workspace/games/mines/src/live-site-verifier.ts; the three

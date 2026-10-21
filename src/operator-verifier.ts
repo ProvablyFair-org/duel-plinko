@@ -3,10 +3,14 @@
  *
  * Duel.com's Provably Fair → Verify page, with Plinko selected, shows a JavaScript code panel
  * (evidence/S10-fairness-plinko-code.png already showed the whole of it expanded). That code is the
- * operator's published algorithm for Plinko — Duel's own source for the drop. Until 2026-09-25 the
- * package said src/rng.ts was "coded from the cryptographic specification, not copied from any casino
- * source code" and cited no operator line; Duel does publish this source, and this file is the
- * correction.
+ * operator's published algorithm for Plinko. Until 2026-09-25 the package said Duel ships no source
+ * for it; Duel does publish this code, and this file is the correction.
+ *
+ * ROLE (since 20 Oct 2026, v1.4.0). This file is a SECOND CHECK, not the source of src/rng.ts.
+ * src/rng.ts is rebuilt from the written specification docs/ALGORITHM.md by an implementer who never
+ * opened Duel's code; Duel's file is run here, byte for byte, to show that it agrees with that
+ * rebuild and with the served slots. From 25 Sep 2026 through v1.3.0 src/rng.ts was a port of this
+ * file and cited 8 of its lines; the port and that citation table were removed on 20 Oct 2026.
  *
  * PROVENANCE. Copied by Paulo from duel.com → Provably Fair → Verify (Plinko) → Expand → Copy on
  * 2026-09-25, and saved verbatim as evidence/verify-tab/duel-verify-tab-plinko-2026-09-25.js
@@ -25,8 +29,6 @@
  *      ordered L/R path is read from the same unmodified function as prefix sums). Not one character
  *      of the file is rewritten, even in memory. The child process is used because the file awaits
  *      WebCrypto and the suite is synchronous; spawnSync keeps it synchronous with no install.
- *   3. CHECKS THE CITATIONS: every line src/rng.ts cites (OPERATOR_SOURCE_CITES) must carry, at that
- *      line number of the pinned file, the text it quotes.
  */
 
 import * as crypto from 'crypto';
@@ -34,7 +36,6 @@ import * as fs from 'fs';
 import * as os from 'os';
 import * as path from 'path';
 import { spawnSync } from 'child_process';
-import { OPERATOR_SOURCE_CITES } from './rng';
 
 export const PACKAGE_ROOT = path.join(__dirname, '..');
 export const OPERATOR_VERIFIER_FILE = 'evidence/verify-tab/duel-verify-tab-plinko-2026-09-25.js';
@@ -154,18 +155,4 @@ export function pathFromPrefixes(prefixes: number[] | null): number | null {
     p = p * 2 + bit; prev = s;
   }
   return p;
-}
-
-/** Every citation in src/rng.ts must quote, verbatim, the pinned operator file at the line it names. */
-export function checkOperatorCites(root = PACKAGE_ROOT): { checked: number; bad: string[] } {
-  const p = path.join(root, OPERATOR_VERIFIER_FILE);
-  if (!fs.existsSync(p)) return { checked: 0, bad: [`${OPERATOR_VERIFIER_FILE} not found`] };
-  const lines = fs.readFileSync(p, 'utf8').split('\n');
-  const bad: string[] = [];
-  for (const c of OPERATOR_SOURCE_CITES) {
-    const at = lines[c.line - 1];
-    if (at === undefined || !at.includes(c.text)) bad.push(`L${c.line} does not contain ${JSON.stringify(c.text)} (it reads ${JSON.stringify((at ?? '').trim())})`);
-  }
-  if (OPERATOR_SOURCE_CITES.length === 0) bad.push('src/rng.ts cites no operator line');
-  return { checked: OPERATOR_SOURCE_CITES.length, bad };
 }

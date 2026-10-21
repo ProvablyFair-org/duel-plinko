@@ -76,7 +76,7 @@
     "expect": "[FAIL] Step 5",
     "guard": "The modulo-bias bound is computed from the declared extraction parameters and compared against the profile's 2^-32 ceiling. An extraction whose domain leaves a remainder favours the low residue — the board leans — and this is the only assertion in the suite that would notice, since every slot would still recompute correctly.",
     "file": "src/rng.ts",
-    "find": "  const domainSize = Math.pow(2, 4 * hexChars);",
+    "find": "  const domainSize = 16 ** hexChars;",
     "replace": "  const domainSize = 3; // MUTATION: odd domain, one residue is 2/3 likelier than the other"
   },
   {
@@ -193,16 +193,6 @@
     "file": "evidence/verify-tab/duel-verify-tab-plinko-2026-09-25.js",
     "find": "// Code written in javascript",
     "replace": "// Code written in JavaScript"
-  },
-  {
-    "name": "M07i src/rng.ts cites an operator line that does not carry the quoted text",
-    "step": 5,
-    "runner": "verify",
-    "expect": "src/rng.ts operator citations",
-    "guard": "Every citation in src/rng.ts OPERATOR_SOURCE_CITES must quote the pinned operator file at the line it names (PLINKO-09).",
-    "file": "src/rng.ts",
-    "find": "{ line: 60, text: 'position += (value % 2);'",
-    "replace": "{ line: 61, text: 'position += (value % 2);'"
   },
   {
     "name": "M09 coincidence counted on the slot but scored against the path null",
@@ -582,7 +572,7 @@
     "expect": "failing",
     "guard": "The key encoding is the single most common way a Plinko re-implementation silently diverges from the operator. The known-answer vectors are chosen so only the hex-decoded key reproduces them.",
     "file": "src/rng.ts",
-    "find": "  return computeSlotFromBuffer(Buffer.from(serverSeed, 'hex'), clientSeed, nonce, rows);",
+    "find": "  return computeSlotFromBuffer(decodeServerSeed(serverSeed), clientSeed, nonce, rows);",
     "replace": "  return computeSlotFromBuffer(Buffer.from(serverSeed), clientSeed, nonce, rows); // MUTATION: key not hex-decoded"
   },
   {

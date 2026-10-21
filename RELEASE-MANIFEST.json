@@ -2,7 +2,7 @@
   "auditId": "PF-2026-DL01",
   "game": "plinko",
   "casino": "duel",
-  "release": "v1.3.0",
+  "release": "v1.4.0",
   "framework": "1.1",
   "simulation": {
     "seeding": "pinned",
@@ -61,7 +61,7 @@
     "outputs/chi-squared-results.json": "c6d8f718085c388d7f9ab06d2747e98b74541d39724f214866dc6767df255d84",
     "outputs/determinism-log.json": "5d5c00c597424ea5ba692454c5998a53ec6ff21e1e314908d79553d7213859f4",
     "outputs/rtp-convergence.html": "57a9b8a30cee238c35dc785ed51c2333bbfc4bf25e4983436f86e2dfe7d279e9",
-    "outputs/verification-results.json": "ca34365287bc8f1ff78fed3d20254f243888a09fbd3966c617b641c27c94fa16",
+    "outputs/verification-results.json": "ea3cce898ae6baad7965415f6926e5466dd5f73ad8754045a290ef133d18faca",
     "outputs/rtp-claim-table.json": "eca16ed27d4cb5bf9c457b48b98fe8a73d71278eeac3a7cbb66250aca08b47cf"
   },
   "verdict": "PROVABLY FAIR — Full Pass",
@@ -82,14 +82,15 @@
     "stage": "production",
     "qualifier": null
   },
-  "supersedes": "v1.2.0",
+  "supersedes": "v1.3.0",
   "signature": "SHA256:gEujiJm2pRyq7lQsfYQfQ1r97H/J7GdaKHbOW8GtikY",
   "falsifiability": {
     "registry": "tests/mutations.json",
     "runner": "scripts/mutate.mjs",
-    "mutations": 53,
-    "killed": 53,
+    "mutations": 52,
+    "killed": 52,
     "scoredStepsCovered": "23/23",
     "declaredSurvivors": 0
-  }
+  },
+  "pending": ""
 }

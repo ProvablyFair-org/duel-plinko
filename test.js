@@ -446,13 +446,11 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.OPERATOR_RUNNER_TIMEOUT_MS = exports.OPERATOR_EXPECTED_LOGS = exports.OPERATOR_VERIFIER_PROVENANCE = exports.OPERATOR_VERIFIER_PINS = exports.OPERATOR_VERIFIER_RUNNER = exports.OPERATOR_VERIFIER_FILE = exports.PACKAGE_ROOT = void 0;
 exports.runOperatorVerifier = runOperatorVerifier;
 exports.pathFromPrefixes = pathFromPrefixes;
-exports.checkOperatorCites = checkOperatorCites;
 const crypto = __importStar(require("crypto"));
 const fs = __importStar(require("fs"));
 const os = __importStar(require("os"));
 const path = __importStar(require("path"));
 const child_process_1 = require("child_process");
-const rng_1 = require("./rng");
 exports.PACKAGE_ROOT = path.join(__dirname, '..');
 exports.OPERATOR_VERIFIER_FILE = 'evidence/verify-tab/duel-verify-tab-plinko-2026-09-25.js';
 exports.OPERATOR_VERIFIER_RUNNER = 'verifier-parity/operator/run-operator-verifier.cjs';
@@ -541,21 +539,6 @@ function pathFromPrefixes(prefixes) {
     }
     return p;
 }
-function checkOperatorCites(root = exports.PACKAGE_ROOT) {
-    const p = path.join(root, exports.OPERATOR_VERIFIER_FILE);
-    if (!fs.existsSync(p))
-        return { checked: 0, bad: [`${exports.OPERATOR_VERIFIER_FILE} not found`] };
-    const lines = fs.readFileSync(p, 'utf8').split('\n');
-    const bad = [];
-    for (const c of rng_1.OPERATOR_SOURCE_CITES) {
-        const at = lines[c.line - 1];
-        if (at === undefined || !at.includes(c.text))
-            bad.push(`L${c.line} does not contain ${JSON.stringify(c.text)} (it reads ${JSON.stringify((at ?? '').trim())})`);
-    }
-    if (rng_1.OPERATOR_SOURCE_CITES.length === 0)
-        bad.push('src/rng.ts cites no operator line');
-    return { checked: rng_1.OPERATOR_SOURCE_CITES.length, bad };
-}
 
 },
 "src/replay-precision.js": function(module, exports, require, __filename, __dirname) {
@@ -588,86 +571,113 @@ exports.runView = runView;
 },
 "src/rng.js": function(module, exports, require, __filename, __dirname) {
 "use strict";
-var __importDefault = (this && this.__importDefault) || function (mod) {
-    return (mod && mod.__esModule) ? mod : { "default": mod };
-};
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.BIT_EXTRACTION = exports.OPERATOR_SOURCE_CITES = void 0;
+exports.BIT_EXTRACTION = void 0;
 exports.bitExtractionBiasBound = bitExtractionBiasBound;
 exports.directionBit = directionBit;
-exports.computeSlotFromBuffer = computeSlotFromBuffer;
 exports.computePathFromBuffer = computePathFromBuffer;
+exports.computeSlotFromBuffer = computeSlotFromBuffer;
 exports.computeSlot = computeSlot;
 exports.verifyHash = verifyHash;
 exports.sha256Buffer = sha256Buffer;
-const crypto_1 = __importDefault(require("crypto"));
-exports.OPERATOR_SOURCE_CITES = Object.freeze([
-    { line: 29, text: 'const keyBytes = hexToBytes(keyHex);', ports: 'the server seed is hex-decoded to the HMAC key' },
-    { line: 35, text: "{ name: 'HMAC', hash: 'SHA-256' },", ports: 'HMAC-SHA256' },
-    { line: 48, text: 'let position = 0;', ports: 'slot starts at 0' },
-    { line: 50, text: 'for (let cursor = 0; cursor < rows; cursor++) {', ports: 'one HMAC per row, cursor = 0 … rows − 1' },
-    { line: 52, text: 'new TextEncoder().encode(`${clientSeed}:${nonce}:${cursor}`)', ports: 'the HMAC message' },
-    { line: 56, text: 'const value = parseInt(bounceHash.slice(0, 8), 16);', ports: 'BIT_EXTRACTION.hexChars = 8: first 4 bytes, big-endian' },
-    { line: 60, text: 'position += (value % 2);', ports: 'BIT_EXTRACTION.modulus = 2: odd = right (+1), even = left' },
-    { line: 63, text: 'return position;', ports: 'final_slot = the sum' },
-]);
+const crypto_1 = require("crypto");
 exports.BIT_EXTRACTION = Object.freeze({
     hexChars: 8,
     modulus: 2,
     rejectionSampling: false,
 });
+const MIN_ROWS = 8;
+const MAX_ROWS = 16;
+const HEX_RE = /^[0-9a-fA-F]*$/;
 function bitExtractionBiasBound() {
     const { hexChars, modulus, rejectionSampling } = exports.BIT_EXTRACTION;
-    const domainSize = Math.pow(2, 4 * hexChars);
+    const domainSize = 16 ** hexChars;
     const remainder = domainSize % modulus;
     const minResidueCount = Math.floor(domainSize / modulus);
-    const maxResidueCount = remainder === 0 ? minResidueCount : minResidueCount + 1;
-    const bias = Math.max(maxResidueCount / domainSize - 1 / modulus, 1 / modulus - minResidueCount / domainSize);
+    const maxResidueCount = minResidueCount + (remainder === 0 ? 0 : 1);
+    const rejectedDraws = rejectionSampling ? remainder : 0;
+    let bias;
+    if (rejectionSampling || remainder === 0) {
+        bias = 0;
+    }
+    else {
+        const hi = Math.abs(maxResidueCount / domainSize - 1 / modulus);
+        const lo = Math.abs(minResidueCount / domainSize - 1 / modulus);
+        bias = Math.max(hi, lo);
+    }
     return {
-        hexChars, modulus, domainSize, remainder,
-        minResidueCount, maxResidueCount,
+        hexChars,
+        modulus,
+        domainSize,
+        remainder,
+        minResidueCount,
+        maxResidueCount,
         bias,
-        exact: remainder === 0,
+        exact: bias === 0,
         rejectionSampling,
-        rejectedDraws: 0,
+        rejectedDraws,
     };
 }
 function directionBit(hmacHex) {
-    return parseInt(hmacHex.substring(0, exports.BIT_EXTRACTION.hexChars), 16) % exports.BIT_EXTRACTION.modulus;
-}
-function computeSlotFromBuffer(key, clientSeed, nonce, rows) {
-    let slot = 0;
-    for (let cursor = 0; cursor < rows; cursor++) {
-        const message = `${clientSeed}:${nonce}:${cursor}`;
-        const hmac = crypto_1.default.createHmac('sha256', key).update(message).digest('hex');
-        slot += directionBit(hmac);
+    const { hexChars, modulus } = exports.BIT_EXTRACTION;
+    if (hmacHex.length < hexChars || !HEX_RE.test(hmacHex)) {
+        throw new TypeError(`directionBit: expected a hex digest of at least ${hexChars} hex characters`);
     }
-    return slot;
+    const u = parseInt(hmacHex.slice(0, hexChars), 16);
+    return u % modulus;
+}
+function checkArgs(clientSeed, nonce, rows) {
+    if (typeof clientSeed !== "string") {
+        throw new TypeError("clientSeed must be a string");
+    }
+    if (!Number.isSafeInteger(nonce) || nonce < 0) {
+        throw new RangeError("nonce must be a non-negative safe integer");
+    }
+    if (!Number.isInteger(rows) || rows < MIN_ROWS || rows > MAX_ROWS) {
+        throw new RangeError(`rows must be an integer in ${MIN_ROWS}..${MAX_ROWS}`);
+    }
+}
+function rowDigestHex(key, clientSeed, nonce, i) {
+    const message = `${clientSeed}:${String(nonce)}:${String(i)}`;
+    return (0, crypto_1.createHmac)("sha256", key).update(Buffer.from(message, "utf8")).digest("hex");
 }
 function computePathFromBuffer(key, clientSeed, nonce, rows) {
+    checkArgs(clientSeed, nonce, rows);
     let slot = 0;
     let path = 0;
-    for (let cursor = 0; cursor < rows; cursor++) {
-        const message = `${clientSeed}:${nonce}:${cursor}`;
-        const hmac = crypto_1.default.createHmac('sha256', key).update(message).digest('hex');
-        const bit = directionBit(hmac);
+    for (let i = 0; i < rows; i++) {
+        const bit = directionBit(rowDigestHex(key, clientSeed, nonce, i));
         slot += bit;
-        path = path * 2 + bit;
+        path = (path << 1) | bit;
     }
     return { slot, path };
 }
+function computeSlotFromBuffer(key, clientSeed, nonce, rows) {
+    return computePathFromBuffer(key, clientSeed, nonce, rows).slot;
+}
+function decodeServerSeed(serverSeed) {
+    if (typeof serverSeed !== "string" || serverSeed.length !== 64 || !HEX_RE.test(serverSeed)) {
+        throw new TypeError("serverSeed must be 64 hex characters");
+    }
+    return Buffer.from(serverSeed, "hex");
+}
 function computeSlot(serverSeed, clientSeed, nonce, rows) {
-    return computeSlotFromBuffer(Buffer.from(serverSeed, 'hex'), clientSeed, nonce, rows);
+    return computeSlotFromBuffer(decodeServerSeed(serverSeed), clientSeed, nonce, rows);
 }
 function verifyHash(serverSeed, serverSeedHashed) {
-    const hash = crypto_1.default
-        .createHash('sha256')
-        .update(Buffer.from(serverSeed, 'hex'))
-        .digest('hex');
-    return hash === serverSeedHashed;
+    let key;
+    try {
+        key = decodeServerSeed(serverSeed);
+    }
+    catch {
+        return false;
+    }
+    if (typeof serverSeedHashed !== "string")
+        return false;
+    return sha256Buffer(key) === serverSeedHashed.toLowerCase();
 }
 function sha256Buffer(buf) {
-    return crypto_1.default.createHash('sha256').update(buf).digest('hex');
+    return (0, crypto_1.createHash)("sha256").update(buf).digest("hex");
 }
 
 },
@@ -1983,8 +1993,8 @@ describe('Payout Accuracy — confirms the platform paid the correct amount for 
         }
     });
 });
-describe('Operator source — Duel\'s own Plinko Verify-tab code, executed unmodified (evidence/verify-tab, copied 2026-09-25)', () => {
-    const { runOperatorVerifier, checkOperatorCites, pathFromPrefixes, OPERATOR_VERIFIER_PINS, OPERATOR_VERIFIER_FILE, OPERATOR_EXPECTED_LOGS } = require('../../src/operator-verifier');
+describe('Second check — Duel\'s own Plinko Verify-tab code, executed unmodified (evidence/verify-tab, copied 2026-09-25)', () => {
+    const { runOperatorVerifier, pathFromPrefixes, OPERATOR_VERIFIER_PINS, OPERATOR_VERIFIER_FILE, OPERATOR_EXPECTED_LOGS } = require('../../src/operator-verifier');
     const { computePathFromBuffer: pathOf } = require('../../src/rng');
     const known = VECTORS.map((v, i) => ({ id: `known${i}`, serverSeed: v.serverSeed, clientSeed: v.clientSeed, nonce: v.nonce, rows: v.rows }));
     const captured = rawDataset.bets.map(b => ({ id: `bet${b.response.id}`,
@@ -1997,11 +2007,6 @@ describe('Operator source — Duel\'s own Plinko Verify-tab code, executed unmod
         assert_1.default.strictEqual(run.files[0].actual, OPERATOR_VERIFIER_PINS[OPERATOR_VERIFIER_FILE]);
         assert_1.default.strictEqual(run.error, null);
         assert_1.default.deepStrictEqual(run.logs, [...OPERATOR_EXPECTED_LOGS]);
-    });
-    it('every operator line src/rng.ts cites carries the quoted text verbatim', () => {
-        const c = checkOperatorCites();
-        assert_1.default.deepStrictEqual(c.bad, []);
-        assert_1.default.ok(c.checked > 0);
     });
     it('fixed vectors: the operator code returns the 7 known-answer slots above', () => {
         VECTORS.forEach((v, i) => {
@@ -2119,6 +2124,218 @@ describe('Replay precision — a one-ulp CPU difference stays out of the compare
     });
 });
 
+},
+"tests/plinko/RngSpecTests.js": function(module, exports, require, __filename, __dirname) {
+"use strict";
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    var desc = Object.getOwnPropertyDescriptor(m, k);
+    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
+      desc = { enumerable: true, get: function() { return m[k]; } };
+    }
+    Object.defineProperty(o, k2, desc);
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
+    Object.defineProperty(o, "default", { enumerable: true, value: v });
+}) : function(o, v) {
+    o["default"] = v;
+});
+var __importStar = (this && this.__importStar) || (function () {
+    var ownKeys = function(o) {
+        ownKeys = Object.getOwnPropertyNames || function (o) {
+            var ar = [];
+            for (var k in o) if (Object.prototype.hasOwnProperty.call(o, k)) ar[ar.length] = k;
+            return ar;
+        };
+        return ownKeys(o);
+    };
+    return function (mod) {
+        if (mod && mod.__esModule) return mod;
+        var result = {};
+        if (mod != null) for (var k = ownKeys(mod), i = 0; i < k.length; i++) if (k[i] !== "default") __createBinding(result, mod, k[i]);
+        __setModuleDefault(result, mod);
+        return result;
+    };
+})();
+Object.defineProperty(exports, "__esModule", { value: true });
+const assert = __importStar(require("assert"));
+const crypto_1 = require("crypto");
+const rng_1 = require("../../src/rng");
+const EXPECTED_CHECKS = 71;
+function runSelftest() {
+    let pass = 0;
+    let total = 0;
+    const failed = [];
+    function check(name, ok, detail = "") {
+        total++;
+        if (ok)
+            pass++;
+        else
+            failed.push(`${name}${detail ? "  " + detail : ""}`);
+    }
+    function parseDec(s) {
+        const [i, f = ""] = s.split(".");
+        return { n: BigInt(i + f), scale: f.length };
+    }
+    function decEqual(a, b) {
+        const s = Math.max(a.scale, b.scale);
+        return a.n * 10n ** BigInt(s - a.scale) === b.n * 10n ** BigInt(s - b.scale);
+    }
+    function decMul(a, b) {
+        const x = parseDec(a);
+        const y = parseDec(b);
+        return { n: x.n * y.n, scale: x.scale + y.scale };
+    }
+    const vectors = [
+        {
+            id: "V1",
+            serverSeed: "b092c51c7b51b3a3ba4e387dfec1c9381103603d161a6a7553f7af4aeda85afe",
+            commitment: "00f28fa3606fcc7734b24ed4a3a694b719f28850c22c09bcd41e137602e4934f",
+            clientSeed: "mzYqdNQIyYadXPtz", nonce: 0, rows: 8, amount: "0.01",
+            digest0: "4803f49fa779e5c671ce2524bbe04c11034626d85fe9449c7683415b38480a19",
+            u32: [1208218783, 1831192550, 3550515791, 3798420359, 362664949, 2066711318, 4282547452, 64191362],
+            bits: [1, 0, 1, 1, 1, 0, 0, 0], slot: 4,
+            multiplier: "0.50462510", winAmount: "0.0050462510", served: "0.005046251",
+        },
+        {
+            id: "V2",
+            serverSeed: "3dde68589b9ab1511122d6debffb0258c95297430bfc8e186a71c5bc75117565",
+            commitment: "74481b1c82e0f46b8b0a98d639aa5170d5d174364e74e1de34ee15766b5870b6",
+            clientSeed: "iWWhWwBvVIA2kVuy", nonce: 19, rows: 16, amount: "0.01",
+            digest0: "a376d113f0c4531fdefd2d480f4e5b0cec96492810f02fb2a056361d88a74fb8",
+            u32: [2742472979, 3171529583, 3496961629, 2483695908, 943258331, 1685673677, 2045430745, 1813647369,
+                1420783483, 2029789869, 2724053949, 1950308245, 661958641, 3207574751, 1421442009, 1143409021],
+            bits: [1, 1, 1, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1], slot: 15,
+            multiplier: "131.21304378", winAmount: "1.3121304378",
+        },
+        {
+            id: "V3",
+            serverSeed: "0e135f783cdad6a66406431391a4a03bf32c647d57a642b6a097c6bdd3a9f50a",
+            commitment: "3b7dc18e27c4539a681ca43b452efca593d5afff608066c5787cc65127ea9a2f",
+            clientSeed: "qea1EWzIkyI305S0", nonce: 45, rows: 16, amount: "10",
+            digest0: "bbfefa9ca97ada9c741dec567dc5b0c197f16c090074aefe738a227c29659852",
+            u32: [3154049692, 3278990932, 44990447, 1187219136, 237728132, 2073096196, 4235419598, 3982105512,
+                246695367, 2942818124, 253749286, 3096407030, 457221794, 4129591772, 902742531, 1338334078],
+            bits: [0, 0, 1, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 1, 0], slot: 3,
+            multiplier: "9.08397996", winAmount: "90.83979960", served: "90.8397996",
+        },
+        {
+            id: "V4",
+            serverSeed: "b2b86a583484b0589d1d033201e28f166c68447a9d3a47e0cf48dc9c98cbe821",
+            commitment: "debfede46cc0af86346d04057d2ee79879b97099807f62874f132f4f023b4b12",
+            clientSeed: "pfauditmnta73k8", nonce: 12, rows: 12, amount: "0.01",
+            digest0: "fc51959ea355b602e3a25dd19581f2bcd0d70d6e85786e2b1fea6786af3a92a4",
+            u32: [4233205150, 3300415547, 556610075, 3824352718, 3687121655, 3720121882, 2758423338, 2187888329,
+                3599665473, 1391571607, 1927821513, 2421143690],
+            bits: [0, 1, 1, 0, 1, 0, 0, 1, 1, 1, 1, 0], slot: 7,
+            multiplier: "1.00929999", winAmount: "0.0100929999",
+        },
+        {
+            id: "V5",
+            serverSeed: "db449f96787bd94cc2b347cd8cac1048f300ebcc2f649ca7efb7e9980559b42c",
+            commitment: "c88889ae43c8166214e28e2a507512aa90272d1cad93b6b24e2205f3dd6da2ba",
+            clientSeed: "p0ycgadmrO8Tuh6x", nonce: 16, rows: 10, amount: "0.01",
+            digest0: "242655271aa9956f7ebed362739c871654b1355e70d997f1ca129eda1caaa0ce",
+            u32: [606491943, 3812509833, 296721300, 3732610432, 826525807, 1870318947, 3112344645, 2529724738,
+                2275667136, 3049930505],
+            bits: [1, 1, 0, 0, 1, 1, 1, 0, 0, 1], slot: 6,
+            multiplier: "0.60602844", winAmount: "0.0060602844",
+        },
+    ];
+    function rowDigest(seedHex, c, n, i) {
+        return (0, crypto_1.createHmac)("sha256", Buffer.from(seedHex, "hex")).update(`${c}:${n}:${i}`, "utf8").digest("hex");
+    }
+    for (const v of vectors) {
+        const key = Buffer.from(v.serverSeed, "hex");
+        check(`${v.id} commitment sha256Buffer(seed bytes)`, (0, rng_1.sha256Buffer)(key) === v.commitment);
+        check(`${v.id} verifyHash true`, (0, rng_1.verifyHash)(v.serverSeed, v.commitment));
+        check(`${v.id} digest_0`, rowDigest(v.serverSeed, v.clientSeed, v.nonce, 0) === v.digest0);
+        const u32 = v.u32.map((_, i) => parseInt(rowDigest(v.serverSeed, v.clientSeed, v.nonce, i).slice(0, 8), 16));
+        check(`${v.id} u32 i=0..${v.rows - 1}`, u32.length === v.rows && u32.every((x, i) => x === v.u32[i]));
+        const bits = v.u32.map((_, i) => (0, rng_1.directionBit)(rowDigest(v.serverSeed, v.clientSeed, v.nonce, i)));
+        check(`${v.id} directionBit per row`, bits.every((b, i) => b === v.bits[i]), bits.join(""));
+        check(`${v.id} bits == u32 mod 2`, v.u32.every((x, i) => x % 2 === v.bits[i]));
+        check(`${v.id} computeSlot`, (0, rng_1.computeSlot)(v.serverSeed, v.clientSeed, v.nonce, v.rows) === v.slot);
+        check(`${v.id} computeSlotFromBuffer`, (0, rng_1.computeSlotFromBuffer)(key, v.clientSeed, v.nonce, v.rows) === v.slot);
+        const expectedPath = parseInt(v.bits.join(""), 2);
+        const p = (0, rng_1.computePathFromBuffer)(key, v.clientSeed, v.nonce, v.rows);
+        check(`${v.id} computePathFromBuffer slot+path`, p.slot === v.slot && p.path === expectedPath, `slot ${p.slot} path ${p.path.toString(2).padStart(v.rows, "0")}`);
+        const product = decMul(v.amount, v.multiplier);
+        check(`${v.id} win_amount = amount x multiplier`, decEqual(product, parseDec(v.winAmount)));
+        if (v.served)
+            check(`${v.id} served win_amount numerically equal`, decEqual(product, parseDec(v.served)));
+    }
+    const b = (0, rng_1.bitExtractionBiasBound)();
+    check("bias: hexChars/modulus/rejection mirror BIT_EXTRACTION", b.hexChars === rng_1.BIT_EXTRACTION.hexChars && b.modulus === rng_1.BIT_EXTRACTION.modulus
+        && b.rejectionSampling === rng_1.BIT_EXTRACTION.rejectionSampling);
+    check("bias: hexChars 8, modulus 2, no rejection (spec §2 Step 2)", b.hexChars === 8 && b.modulus === 2 && b.rejectionSampling === false);
+    check("bias: domainSize = 16**hexChars", b.domainSize === 16 ** b.hexChars);
+    check("bias: remainder = domainSize % modulus", b.remainder === b.domainSize % b.modulus);
+    check("bias: residue counts sum to domain", b.minResidueCount * (b.modulus - b.remainder) + b.maxResidueCount * b.remainder === b.domainSize
+        || (b.remainder === 0 && b.minResidueCount * b.modulus === b.domainSize));
+    check("bias: 0, exact, no rejected draws", b.bias === 0 && b.exact === true && b.rejectedDraws === 0 && b.minResidueCount === b.maxResidueCount, JSON.stringify(b));
+    const v0 = vectors[0];
+    check("verifyHash false on wrong hash", !(0, rng_1.verifyHash)(v0.serverSeed, vectors[1].commitment));
+    check("verifyHash false on ASCII-hex hash (spec §1.2 rejected form)", !(0, rng_1.verifyHash)(v0.serverSeed, (0, rng_1.sha256Buffer)(Buffer.from(v0.serverSeed, "ascii"))));
+    check("verifyHash false on malformed seed", !(0, rng_1.verifyHash)("zz", v0.commitment));
+    check("verifyHash accepts uppercase published hash", (0, rng_1.verifyHash)(v0.serverSeed, v0.commitment.toUpperCase()));
+    check("sha256Buffer('abc') known value", (0, rng_1.sha256Buffer)(Buffer.from("abc")) === "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad");
+    let rangeOk = true;
+    let popOk = true;
+    let widthOk = true;
+    let agreeOk = true;
+    for (let t = 0; t < 2000; t++) {
+        const seed = (0, crypto_1.randomBytes)(32).toString("hex");
+        const key = Buffer.from(seed, "hex");
+        const c = (0, crypto_1.randomBytes)(8).toString("base64");
+        const n = t;
+        const rows = 8 + (t % 9);
+        const { slot, path } = (0, rng_1.computePathFromBuffer)(key, c, n, rows);
+        if (!(Number.isInteger(slot) && slot >= 0 && slot <= rows))
+            rangeOk = false;
+        let pop = 0;
+        for (let x = path; x; x >>= 1)
+            pop += x & 1;
+        if (pop !== slot)
+            popOk = false;
+        if (path < 0 || path >= 2 ** rows)
+            widthOk = false;
+        if ((0, rng_1.computeSlot)(seed, c, n, rows) !== slot)
+            agreeOk = false;
+    }
+    check("property: slot in 0..rows (2000 random draws, rows 8..16)", rangeOk);
+    check("property: slot == popcount(path)", popOk);
+    check("property: path fits in rows bits", widthOk);
+    check("property: computeSlot == computePathFromBuffer.slot", agreeOk);
+    check("property: directionBit in {0,1}", [0, 1, 2, 3, 4, 5].every(() => [0, 1].includes((0, rng_1.directionBit)((0, crypto_1.randomBytes)(32).toString("hex")))));
+    function throws(f) {
+        try {
+            f();
+            return false;
+        }
+        catch {
+            return true;
+        }
+    }
+    const k0 = Buffer.from(v0.serverSeed, "hex");
+    check("guard: rows 7 and 17 rejected", throws(() => (0, rng_1.computeSlotFromBuffer)(k0, "a", 0, 7)) && throws(() => (0, rng_1.computeSlotFromBuffer)(k0, "a", 0, 17)));
+    check("guard: negative / fractional nonce rejected", throws(() => (0, rng_1.computeSlotFromBuffer)(k0, "a", -1, 8)) && throws(() => (0, rng_1.computeSlotFromBuffer)(k0, "a", 1.5, 8)));
+    check("guard: short digest rejected by directionBit", throws(() => (0, rng_1.directionBit)("abc")));
+    return { pass, total, failed };
+}
+describe('Spec self-test — src/rng.ts against docs/ALGORITHM.md §5 vectors and properties (clean-room implementer)', () => {
+    it(`all ${EXPECTED_CHECKS} spec checks pass`, function () {
+        this.timeout(60000);
+        const r = runSelftest();
+        assert.deepStrictEqual(r.failed, []);
+        assert.strictEqual(r.total, EXPECTED_CHECKS);
+        assert.strictEqual(r.pass, EXPECTED_CHECKS);
+    });
+});
+
 }
 };
 // Bundled modules receive their original directory paths for evidence-file lookup.
@@ -2179,6 +2396,7 @@ function __installTestGlobals() {
 if (!__runWorkerEntry()) {
 __installTestGlobals();
 __load("tests/plinko/PlinkoTests.js");
+__load("tests/plinko/RngSpecTests.js");
 __load("tests/plinko/domainTests.js");
 __load("tests/plinko/replayPrecisionTests.js");
 }
