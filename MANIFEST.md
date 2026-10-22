@@ -1,6 +1,6 @@
 # Duel Plinko — Consolidated Audit Overview
 
-**Audit ID:** PF-2026-DL01 · **Auditor:** ProvablyFair.org · **Release:** `v1.4.0` · **Framework:** 1.1
+**Audit ID:** PF-2026-DL01 · **Auditor:** ProvablyFair.org · **Release:** `v1.4.1` · **Framework:** 1.1
 
 Audited April 2026. Dataset of record captured on **10 April 2026**, from `2026-04-10T16:48:39.110Z` to `2026-04-10T19:22:55.922Z` on production `duel.com`. Publication date: 4 June 2026. Audit report: https://audit.provablyfair.org/casino/duel/games/plinko/overview. This overview consolidates the package documentation; the machine-readable release identity remains in [RELEASE-MANIFEST.json](RELEASE-MANIFEST.json).
 
@@ -598,6 +598,7 @@ For players: record `serverSeedHashed` before betting and check it after the rev
 | `v1.2.0` | Reproduction gate, exit codes and artifact hygiene, below. No figure, step result or verdict changed. | unchanged |
 | `v1.3.0` | Conformance pass against the Plinko game profile, below, re-certified under Framework 1.1. One new scored step, ten strengthened, and a falsifiability gate. The verdict did not change. | unchanged |
 | `v1.4.0` | RNG code rebuilt from a written spec, below; Duel's Verify-tab code kept as a second check only. Final QA corrections of 21 October 2026, below. | unchanged |
+| `v1.4.1` | Errata: adds `.gitattributes` (`* -text`) so a Windows git clone keeps every file byte-identical; no audit content changed. | unchanged |
 
 ### v1.4.0
 
