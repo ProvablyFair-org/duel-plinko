@@ -12,7 +12,7 @@
   ],
   "inputs": {
     ".mocharc.yml": "740a5513cfdeb6b12e9da4a02c1dca865f5204541da4458b9aa9552ab81fe2fe",
-    "package-lock.json": "9c9ef226aa7182da2cea31701e31ccf0b529f1c996a8e0294fa12a9a67fde109",
+    "package-lock.json": "1e2608cf992458077fc78457ab82f17c4802cb39e511c67b498489cfdafa26e5",
     "scripts/build-standalone.mjs": "c9aa7f849375fe5dbe9859ebb2e49f6160c9ff3f5bd1bd2a2fcbeeee95f9ca9a",
     "scripts/check-standalone.mjs": "4aa613101ac454446734f0e711888e1171ec5ceb3412615e329f20252afc6502",
     "scripts/standalone-runtime.cjs": "b6b2ada30e109e2949b3e3c6e5da4852bcc0549e1f46fad4cf657d255440f85c",
@@ -20,7 +20,7 @@
     "src/config.ts": "42dbe11cc749b5c1c30c3572a03b649f64d73fb6c6295e082e0d0adf4deac32e",
     "src/diff-simulation.ts": "7f1d45de64582cbd6bad35f4dcfed3e0fced9a17c70e8d798fbfed2c27be21b9",
     "src/diff.ts": "0375320f947d871851b082f4fca4daf4bb6df0b7030434e3d0b551be9de00e35",
-    "src/domains.ts": "c7d8448d3afbbbfd9084154810cb9393f539fe332ee9d13bcdab586f6d445b6d",
+    "src/domains.ts": "d9d0f734f2e1efe116e1d802c12e855d671c720284387c7a9b0944cc12efeb0f",
     "src/live-site-verifier.ts": "f613c4ede83340d6c2ad84778420d21d85dfb964426e61edfcd9b56b8f07a45e",
     "src/loader.ts": "ae5ed36c259d7e60ae0fbe7cd12e2593bdc3401c7eedba22d99ce22bf36d122a",
     "src/operator-verifier.ts": "bea14aafaf93570d01aade5c3b179c570bef747749ef2fece0b9c1aaa8f93f41",

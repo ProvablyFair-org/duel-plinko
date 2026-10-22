@@ -1,6 +1,6 @@
 # Duel Plinko — Provably Fair Audit
 
-**Auditor:** [ProvablyFair.org](https://www.provablyfair.org) · **Audit ID:** PF-2026-DL01 · **Release:** `v1.4.1` · **Capture:** 10 April 2026
+**Auditor:** [ProvablyFair.org](https://www.provablyfair.org) · **Audit ID:** PF-2026-DL01 · **Release:** `v1.4.2` · **Capture:** 10 April 2026
 
 **Result: PROVABLY FAIR — Full Pass.** All 8,100 captured bets reproduce from `(serverSeed, clientSeed, nonce)`: 8,100/8,100 slots, 0 mismatches. The verifier reports 23 scored steps: 22 PASS and one capture-origin flag on Step 4, with 0 hard fails and 0 verdict-affecting flags. The flag covers two capture retries whose missed nonces were reconstructed from revealed, commitment-matching server seeds; it is verdict-neutral and does not identify an operator defect.
 

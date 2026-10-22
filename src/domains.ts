@@ -15,7 +15,7 @@
  *   plinkoConfig.json, NEVER FROM THE ARTIFACT BEING CHECKED. A bound the artifact supplies is
  *   a bound a forger sets.
  *
- * G-VALID — reject only the IMPOSSIBLE, never the surprising. The mirror defect costs as much:
+ * Reject only the IMPOSSIBLE, never the surprising. The mirror defect costs as much:
  * a genuine million-round result rejected for landing on expectation, or an honest running-mean
  * RTP above 100% rejected for exceeding 1. So these domains encode PHYSICAL POSSIBILITY, not
  * plausibility, and nothing here rejects a value for being round, extreme, or equal to its own
